@@ -1,6 +1,7 @@
 import React, { useState,useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const AddMembershipModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -9,25 +10,24 @@ const AddMembershipModal = ({ isOpen, onClose }) => {
   });
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchMemberships = async () => {
-    setLoading(true);
-    try{
-      console.log("AddMembershipModal: Fetching memberships...");
-      const response = await axios.get("http://localhost:5000/plans/get-membership",{withCredentials:true});
-      console.log("AddMembershipModal: Membership response:", response.data);
-      console.log("AddMembershipModal: Memberships count:", response.data.membership?.length || 0);
-      setMemberships(response.data.membership || []);
-    }catch(error){
-      console.error("AddMembershipModal: Error fetching memberships:", error);
-      if (error.response) {
-        console.error("AddMembershipModal: Error status:", error.response.status);
-        console.error("AddMembershipModal: Error data:", error.response.data);
+    try {
+      // console.log("AddMembershipModal: Fetching memberships...");
+      const response = await axios.get('http://localhost:5000/plans/get-membership', {
+        withCredentials: true
+      });
+      // console.log("AddMembershipModal: Membership response:", response.data);
+      // console.log("AddMembershipModal: Memberships count:", response.data.membership?.length || 0);
+      
+      if (response.data.success) {
+        setMemberships(response.data.membership || []);
       }
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching memberships:', error);
     }
-  }
+  };
 
   useEffect(() => {
     if(isOpen){
@@ -43,29 +43,37 @@ const AddMembershipModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try{
-      console.log("Adding membership:", formData);
-      const response = await axios.post("http://localhost:5000/plans/add-membership",formData,{withCredentials:true});
-      console.log("Membership added successfully:", response.data);
+    
+    if (!formData.months || !formData.price) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      // console.log("Adding membership:", formData);
       
-      // Refresh the memberships list
-      await fetchMemberships();
-      
-      // Reset form
-      setFormData({ months: '', price: '' });
-      
-      // Show success message
-      alert("Membership plan added successfully!");
-      
-      onClose();
-    }catch(error){
-      console.error("Error adding membership:", error);
-      if (error.response) {
-        console.error("Error response:", error.response.data);
-        alert("Error adding membership: " + (error.response.data.message || "Unknown error"));
+      const response = await axios.post(
+        'http://localhost:5000/plans/add-membership',
+        formData,
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        // console.log("Membership added successfully:", response.data);
+        toast.success('Membership plan added successfully!');
+        setFormData({ months: '', price: '' });
+        onClose();
+        // Refresh the memberships list
+        fetchMemberships();
       } else {
-        alert("Error adding membership. Please try again.");
+        toast.error(response.data.message || 'Failed to add membership plan');
       }
+    } catch (error) {
+      console.error('Error adding membership:', error);
+      toast.error('Error adding membership plan');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

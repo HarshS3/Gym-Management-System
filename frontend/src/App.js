@@ -13,15 +13,41 @@ import Equipment from './pages/Equipment.jsx';
 import Settings from './pages/Settings.jsx';
 import { Toaster } from 'react-hot-toast';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 
 function App() {
     
-  const [isLogin,setIsLogin] = useState(false);
+  const [isLogin, setIsLogin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(()=>{
-    const checkAuthStatus = () => {
-      let isLoggedIn = localStorage.getItem('isLoggedIn');
-      setIsLogin(isLoggedIn === 'true');
+    const checkAuthStatus = async () => {
+      try {
+        setIsLoading(true);
+        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        
+        if (isLoggedIn === 'true') {
+          // Verify with backend to ensure session is still valid
+          try {
+            await axios.get('http://localhost:5000/auth/verify', {
+              withCredentials: true
+            });
+            setIsLogin(true);
+          } catch (error) {
+            // Session expired, clear localStorage
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('gymName');
+            setIsLogin(false);
+          }
+        } else {
+          setIsLogin(false);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setIsLogin(false);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     checkAuthStatus();
@@ -37,6 +63,16 @@ function App() {
       window.removeEventListener('loginStateChanged', checkAuthStatus);
     };
   },[]);
+
+  // Show loading spinner while checking auth
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {isLogin ? (

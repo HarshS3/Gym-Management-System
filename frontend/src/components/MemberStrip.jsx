@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import { 
   FaCheckCircle,
   FaTimesCircle,
-  FaUserEdit,
-  FaEllipsisV,
-  FaToggleOn,
-  FaToggleOff
+  FaUserEdit
 } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -13,7 +10,6 @@ import { toast } from 'react-hot-toast';
 
 const MemberStrip = ({ member, onStatusChange }) => {
   const navigate = useNavigate();
-  const [changingStatus, setChangingStatus] = useState(false);
   
   // Format dates for display
   const formatDate = (dateString) => {
@@ -32,34 +28,6 @@ const MemberStrip = ({ member, onStatusChange }) => {
   };
   
   const daysLeft = calculateDaysLeft();
-
-  const handleStatusChange = async () => {
-    try {
-      setChangingStatus(true);
-      const newStatus = member.status === 'Active' ? 'Inactive' : 'Active';
-      
-      const response = await axios.post(
-        `http://localhost:5000/members/change-status/${member._id}`,
-        { status: newStatus },
-        { withCredentials: true }
-      );
-
-      if (response.data.success) {
-        toast.success(`Member status changed to ${newStatus}`);
-        // Call the parent callback to refresh the member list
-        if (onStatusChange) {
-          onStatusChange();
-        }
-      } else {
-        toast.error('Failed to change status');
-      }
-    } catch (error) {
-      console.error('Error changing member status:', error);
-      toast.error('Error changing member status');
-    } finally {
-      setChangingStatus(false);
-    }
-  };
   
   return (
     <tr className="hover:bg-white/5 transition-colors">
@@ -105,24 +73,6 @@ const MemberStrip = ({ member, onStatusChange }) => {
               <span className="text-red-400">Inactive</span>
             </>
           )}
-          <button
-            onClick={handleStatusChange}
-            disabled={changingStatus}
-            className={`ml-2 p-1 rounded-lg transition-all duration-200 ${
-              changingStatus 
-                ? 'opacity-50 cursor-not-allowed' 
-                : 'hover:bg-white/10 cursor-pointer'
-            }`}
-            title={`Change status to ${member.status === 'Active' ? 'Inactive' : 'Active'}`}
-          >
-            {changingStatus ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            ) : member.status === 'Active' ? (
-              <FaToggleOn className="text-green-400 text-lg" />
-            ) : (
-              <FaToggleOff className="text-red-400 text-lg" />
-            )}
-          </button>
         </div>
       </td>
       <td className="px-6 py-4">{formatDate(member.joinDate)}</td>
@@ -141,9 +91,6 @@ const MemberStrip = ({ member, onStatusChange }) => {
             navigate(`/members/${member._id}`);
           }}>
             <FaUserEdit className="text-blue-400" />
-          </button>
-          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-            <FaEllipsisV className="text-gray-400" />
           </button>
         </div>
       </td>

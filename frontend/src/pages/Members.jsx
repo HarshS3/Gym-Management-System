@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom';
 const Members = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddMembershipModalOpen, setIsAddMembershipModalOpen] = useState(false);
 
@@ -36,13 +37,13 @@ const Members = () => {
     setLoading(true);
     try {
       const skip = (currentPage - 1) * limit;
-      console.log("Fetching members with skip:", skip, "limit:", limit);
+      // console.log("Fetching members with skip:", skip, "limit:", limit);
       
       const response = await axios.get(`http://localhost:5000/members/get-all-members?skip=${skip}&limit=${limit}`, {
         withCredentials: true
       });
       
-      console.log("Members response:", response.data);
+      // console.log("Members response:", response.data);
       
       if (response.data.success) {
         setMembers(response.data.members || []);
@@ -75,12 +76,74 @@ const Members = () => {
     fetchData();
   };
 
-  // Filter members based on search and status
-  const filteredMembers = members.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || member.status === filterStatus;
-    return matchesSearch && matchesFilter;
-  });
+  // Filter and sort members
+  const getFilteredAndSortedMembers = () => {
+    let filtered = [...members];
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(member => 
+        member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.phone?.includes(searchTerm)
+      );
+    }
+
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      const today = new Date();
+      
+      filtered = filtered.filter(member => {
+        const membershipEndDate = new Date(member.membership?.endDate);
+        
+        if (filterStatus === 'active') {
+          return membershipEndDate > today;
+        } else if (filterStatus === 'inactive') {
+          return !member.membership?.endDate || membershipEndDate <= today;
+        }
+        return true;
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      if (sortBy === 'name') {
+        aValue = a.name || '';
+        bValue = b.name || '';
+      } else if (sortBy === 'date') {
+        aValue = new Date(a.createdAt || 0);
+        bValue = new Date(b.createdAt || 0);
+      } else if (sortBy === 'status') {
+        aValue = getMemberStatus(a.membership?.endDate);
+        bValue = getMemberStatus(b.membership?.endDate);
+      } else {
+        aValue = a.name || '';
+        bValue = b.name || '';
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return aValue.localeCompare(bValue);
+      } else {
+        return aValue - bValue;
+      }
+    });
+
+    return filtered;
+  };
+
+  const getMemberStatus = (endDate) => {
+    if (!endDate) return 'Inactive';
+    
+    const today = new Date();
+    const end = new Date(endDate);
+    
+    if (end > today) return 'Active';
+    return 'Inactive';
+  };
+
+  const filteredMembers = getFilteredAndSortedMembers();
 
   return (
     <div>
@@ -109,7 +172,7 @@ const Members = () => {
           </div>
 
           {/* Search and Filter Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 gap-6 mb-8">
             {/* Search Bar */}
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -120,32 +183,6 @@ const Members = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-            </div>
-
-            {/* Filter Dropdown */}
-            <div className="relative">
-              <select
-                className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-white/20 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="all">All Members</option>
-                <option value="active">Active Members</option>
-                <option value="inactive">Inactive Members</option>
-              </select>
-              <FaFilter className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
-
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <select
-                className="w-full px-4 py-2 bg-gray-800 rounded-lg border border-white/20 focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
-              >
-                <option value="name">Sort by Name</option>
-                <option value="date">Sort by Join Date</option>
-                <option value="status">Sort by Status</option>
-              </select>
-              <FaSortAmountDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
           </div>
 

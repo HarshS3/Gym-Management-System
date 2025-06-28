@@ -6,10 +6,14 @@ import cookieParser from "cookie-parser";
 import membershipRoutes from "./routes/membership.route.js";
 import memberRoutes from "./routes/member.route.js";
 import cors from "cors";
+import path from "path";
+
 dotenv.config();
 const app = express();
-
 const PORT = process.env.PORT || 5000;
+
+const __dirname = path.resolve();
+app.use(express.static(path.join(__dirname, "/frontend/dist")));
 
 app.use(express.json());
 app.use(cookieParser());
@@ -22,14 +26,18 @@ app.use("/auth",gymRoutes);
 app.use("/plans",membershipRoutes);
 app.use("/members",memberRoutes);
 
+app.get("*",(req,res)=>{
+  res.sendFile(path.resolve(__dirname,"frontend","dist","index.html"));
+});
+
 connectDB()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Server running at http://localhost:${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('Failed to connect to MongoDB:', err.message);
+    console.error('MongoDB connection error:', err.message);
     process.exit(1); 
   });
 

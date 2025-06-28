@@ -71,35 +71,26 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
   const [membershipsLoading, setMembershipsLoading] = useState(false);
 
   const fetchMemberships = async () => {
-    setMembershipsLoading(true);
-    try{
-      console.log("Fetching memberships...");
-      console.log("Current authentication status:", localStorage.getItem('isLoggedIn'));
+    try {
+      // console.log("Fetching memberships...");
+      // console.log("Current authentication status:", localStorage.getItem('isLoggedIn'));
       
-      const response = await axios.get("http://localhost:5000/plans/get-membership",{withCredentials:true});
-      console.log("Membership response:", response.data);
-      console.log("Response status:", response.status);
+      const response = await axios.get('http://localhost:5000/plans/get-membership', {
+        withCredentials: true
+      });
       
-      if (response.data.membership && Array.isArray(response.data.membership)) {
-        setMemberships(response.data.membership);
-        console.log("Memberships set:", response.data.membership);
-        console.log("Memberships count:", response.data.membership.length);
-      } else {
-        console.error("Invalid membership data structure:", response.data);
-        toast.error("Failed to load membership plans");
+      // console.log("Membership response:", response.data);
+      // console.log("Response status:", response.status);
+      
+      if (response.data.success) {
+        // console.log("Memberships set:", response.data.membership);
+        // console.log("Memberships count:", response.data.membership.length);
+        setMemberships(response.data.membership || []);
       }
-    }catch(error){
-      console.error("Error fetching memberships:", error);
-      console.error("Error message:", error.message);
-      if (error.response) {
-        console.error("Error status:", error.response.status);
-        console.error("Error response:", error.response.data);
-      }
-      toast.error("Failed to load membership plans");
-    } finally {
-      setMembershipsLoading(false);
+    } catch (error) {
+      console.error('Error fetching memberships:', error);
     }
-  }
+  };
   useEffect(() => {
     if(isOpen){
       fetchMemberships();
@@ -313,18 +304,18 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
         nextBillDate: formData.nextBillDate
       };
 
-      console.log("Sending member data:", memberData);
-      console.log("Required fields check:");
-      console.log("- name:", memberData.name);
-      console.log("- email:", memberData.email);
-      console.log("- phone:", memberData.phone);
-      console.log("- age:", memberData.age);
-      console.log("- gender:", memberData.gender);
-      console.log("- address:", memberData.address);
-      console.log("- profileImage:", memberData.profileImage);
-      console.log("- membership:", memberData.membership);
-      console.log("- height:", memberData.height);
-      console.log("- weight:", memberData.weight);
+      // console.log("Sending member data:", memberData);
+      // console.log("Required fields check:");
+      // console.log("- name:", memberData.name);
+      // console.log("- email:", memberData.email);
+      // console.log("- phone:", memberData.phone);
+      // console.log("- age:", memberData.age);
+      // console.log("- gender:", memberData.gender);
+      // console.log("- address:", memberData.address);
+      // console.log("- profileImage:", memberData.profileImage);
+      // console.log("- membership:", memberData.membership);
+      // console.log("- height:", memberData.height);
+      // console.log("- weight:", memberData.weight);
 
       // Final validation check
       const requiredFields = ['name', 'email', 'phone', 'age', 'gender', 'address', 'profileImage', 'membership', 'height', 'weight'];

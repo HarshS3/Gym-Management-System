@@ -318,7 +318,7 @@ export const changeStatus=async(req,res)=>{
                 message:"Member not found"
             })
         }
-        console.log(member);
+        // console.log(member);
         member.status=status;
         await member.save();
         res.status(200).json({

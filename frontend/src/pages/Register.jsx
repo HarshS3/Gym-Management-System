@@ -105,7 +105,7 @@ const Register = () => {
     try{
       const response = await axios.post("http://localhost:5000/auth/register",registerFields);
       if(response.data.success){
-        console.log(response);
+        // console.log(response);
         toast.success("Registration successful");
         navigate("/login");
       }

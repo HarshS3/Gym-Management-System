@@ -18,7 +18,7 @@ const Login = () => {
     try{
       const response = await axios.post("http://localhost:5000/auth/login",loginFields,{withCredentials:true});
       if(response.data.success){
-        console.log(response.data);
+        // console.log(response.data);
         localStorage.setItem("gymName",response.data.gym.gymName);
         localStorage.setItem('isLoggedIn','true');
         // Dispatch custom event to notify App.js about the login state change

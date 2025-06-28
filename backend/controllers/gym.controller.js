@@ -90,7 +90,7 @@ export const sendOtp = async (req,res) => {
                     console.log("Error in sending email",error);
                     res.status(500).json({message:"Error in sending email"});
                 }else{
-                    console.log("Email sent",info.response);
+                    // console.log("Email sent",info.response);
                     res.status(200).json({message:"Password reset OTP sent to your email",token});
                 }
             });

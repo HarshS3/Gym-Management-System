@@ -166,7 +166,6 @@ const Dashboard = () => {
                 <FaMoneyBillWave className="text-4xl text-green-300 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Revenue This Month</h3>
                 <p className="text-3xl font-bold text-green-300">₹{stats.monthlyRevenue.toLocaleString()}</p>
-                <p className="text-sm text-gray-400 mt-2">↑ 12% vs last month</p>
               </div>
             </div>
 
