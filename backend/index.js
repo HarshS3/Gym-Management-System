@@ -13,7 +13,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const __dirname = path.resolve();
-app.use(express.static(path.join(__dirname, "/frontend/dist")));
+app.use(express.static(path.join(__dirname, "/frontend/build")));
 
 app.use(express.json());
 app.use(cookieParser());
@@ -27,7 +27,7 @@ app.use("/plans",membershipRoutes);
 app.use("/members",memberRoutes);
 
 app.get("*",(req,res)=>{
-  res.sendFile(path.resolve(__dirname,"frontend","dist","index.html"));
+  res.sendFile(path.resolve(__dirname,"frontend","build","index.html"));
 });
 
 connectDB()
