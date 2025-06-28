@@ -1,0 +1,14 @@
+/* Dark theme for date input calendar */
+.dateInput::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.dateInput {
+  color-scheme: dark;
+}
+
+/* For Firefox */
+.dateInput {
+  -moz-appearance: none;
+} 

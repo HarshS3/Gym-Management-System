@@ -1,0 +1,784 @@
+import React, { useState,useEffect } from 'react';
+import { FaTimes, FaUser, FaHeartbeat, FaRuler, FaDumbbell, FaUserTie } from 'react-icons/fa';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
+
+const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
+  const [activeTab, setActiveTab] = useState('personal');
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    // Basic Information
+    name: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    profileImage: '',
+    address: '',
+    emergencyContact: {
+      name: '',
+      phone: '',
+      relationship: ''
+    },
+    
+    // Health Metrics
+    height: '',
+    weight: '',
+    bmi: '',
+    bodyFat: '',
+    muscleMass: '',
+    
+    // Body Measurements
+    bodyMeasurements: {
+      chest: '',
+      waist: '',
+      hips: '',
+      biceps: '',
+      thighs: '',
+      calves: '',
+      wrist: '',
+      neck: '',
+      forearm: '',
+      ankle: ''
+    },
+    
+    // Workout Routine
+    workoutRoutine: {
+      monday: 'Rest',
+      tuesday: 'Rest',
+      wednesday: 'Rest',
+      thursday: 'Rest',
+      friday: 'Rest',
+      saturday: 'Rest',
+      sunday: 'Rest'
+    },
+    
+    // Personal Trainer
+    personalTrainer: {
+      name: '',
+      phone: ''
+    },
+    
+    // Notes
+    notes: '',
+    
+    // Membership
+    membership: '',
+    nextBillDate: ''
+  });
+  const [memberships, setMemberships] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [membershipsLoading, setMembershipsLoading] = useState(false);
+
+  const fetchMemberships = async () => {
+    setMembershipsLoading(true);
+    try{
+      console.log("Fetching memberships...");
+      console.log("Current authentication status:", localStorage.getItem('isLoggedIn'));
+      
+      const response = await axios.get("http://localhost:5000/plans/get-membership",{withCredentials:true});
+      console.log("Membership response:", response.data);
+      console.log("Response status:", response.status);
+      
+      if (response.data.membership && Array.isArray(response.data.membership)) {
+        setMemberships(response.data.membership);
+        console.log("Memberships set:", response.data.membership);
+        console.log("Memberships count:", response.data.membership.length);
+      } else {
+        console.error("Invalid membership data structure:", response.data);
+        toast.error("Failed to load membership plans");
+      }
+    }catch(error){
+      console.error("Error fetching memberships:", error);
+      console.error("Error message:", error.message);
+      if (error.response) {
+        console.error("Error status:", error.response.status);
+        console.error("Error response:", error.response.data);
+      }
+      toast.error("Failed to load membership plans");
+    } finally {
+      setMembershipsLoading(false);
+    }
+  }
+  useEffect(() => {
+    if(isOpen){
+      fetchMemberships();
+    }
+  }, [isOpen]);
+
+  // Calculate approximate body fat percentage using U.S. Navy method
+  const calculateBodyFatPercentage = (measurements) => {
+    const { chest, waist, hips, neck, height, weight } = measurements;
+    
+    // Need all measurements for calculation
+    if (!chest || !waist || !hips || !neck || !height || !weight) {
+      return null;
+    }
+
+    // Convert height from cm to inches if needed
+    const heightInches = height > 100 ? height / 2.54 : height;
+    const weightLbs = weight > 100 ? weight * 2.20462 : weight;
+    
+    // U.S. Navy method for body fat calculation
+    // For men: BF% = 495 / (1.0324 - 0.19077 * log10(waist - neck) + 0.15456 * log10(height)) - 450
+    // For women: BF% = 495 / (1.29579 - 0.35004 * log10(waist + hip - neck) + 0.22100 * log10(height)) - 450
+    
+    // Assuming male calculation (you can add gender field if needed)
+    const waistNeckDiff = waist - neck;
+    if (waistNeckDiff <= 0) return null;
+    
+    const bodyFatPercentage = 495 / (1.0324 - 0.19077 * Math.log10(waistNeckDiff) + 0.15456 * Math.log10(heightInches)) - 450;
+    
+    return Math.round(bodyFatPercentage * 10) / 10; // Round to 1 decimal place
+  };
+
+  const handleChange = (e, field, subField = null) => {
+    const value = e.target.value;
+    
+    if (subField) {
+      setFormData(prev => {
+        const updatedData = {
+          ...prev,
+          [field]: {
+            ...prev[field],
+            [subField]: value
+          }
+        };
+
+        // Calculate body fat percentage when body measurements change
+        if (field === "bodyMeasurements") {
+          const bodyFat = calculateBodyFatPercentage(updatedData.bodyMeasurements);
+          if (bodyFat !== null) {
+            updatedData.bodyFat = bodyFat;
+          }
+        }
+
+        return updatedData;
+      });
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+
+      // Calculate next bill date when membership is selected
+      if (field === "membership") {
+        const selectedMembership = memberships.find(m => m._id === value);
+        if (selectedMembership) {
+          const today = new Date();
+          const nextBillDate = new Date(today);
+          nextBillDate.setMonth(today.getMonth() + selectedMembership.months);
+          
+          setFormData(prev => ({
+            ...prev,
+            [field]: value,
+            nextBillDate: nextBillDate.toISOString().split('T')[0]
+          }));
+        }
+      }
+    }
+  };
+
+  const calculateBMI = () => {
+    if (formData.height && formData.weight) {
+      const heightInMeters = formData.height / 100;
+      const bmi = (formData.weight / (heightInMeters * heightInMeters)).toFixed(1);
+      setFormData({...formData, bmi: bmi});
+    }
+  };
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const data = new FormData();
+    data.append("file", file);
+    data.append("upload_preset", "gym-management");
+  
+    try {
+      const response = await axios.post("https://api.cloudinary.com/v1_1/di5d7yavn/image/upload", data);
+      const imageUrl = response.data.secure_url;
+  
+      setFormData(prev => ({
+        ...prev,
+        profileImage: imageUrl
+      }));
+    } catch (error) {
+      console.error("Cloudinary upload failed:", error);
+      toast.error("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate all required fields based on what's actually in the form
+    const requiredFields = {
+      'Name': formData.name,
+      'Email': formData.email,
+      'Phone': formData.phone,
+      'Age': formData.age,
+      'Gender': formData.gender,
+      'Address': formData.address,
+      'Membership Plan': formData.membership,
+      'Height': formData.height,
+      'Weight': formData.weight
+    };
+
+    const missingFields = [];
+    for (const [fieldName, value] of Object.entries(requiredFields)) {
+      if (!value || value.trim() === '') {
+        missingFields.push(fieldName);
+      }
+    }
+
+    // Check if profile image is selected
+    if (!formData.profileImage) {
+      missingFields.push('Profile Image');
+    }
+
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    // Validate phone number (basic validation)
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(formData.phone.replace(/\D/g, ''))) {
+      toast.error('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    // Validate age (must be 18 or older)
+    if (formData.age < 18) {
+      toast.error('Member must be at least 18 years old');
+      return;
+    }
+
+    // Validate height and weight
+    if (formData.height < 100 || formData.height > 250) {
+      toast.error('Please enter a valid height (100-250 cm)');
+      return;
+    }
+
+    if (formData.weight < 30 || formData.weight > 300) {
+      toast.error('Please enter a valid weight (30-300 kg)');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Prepare data in the format expected by the backend
+      const memberData = {
+        // Basic Information
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        age: formData.age,
+        gender: formData.gender,
+        address: formData.address,
+        profileImage: formData.profileImage,
+        membership: formData.membership,
+        
+        // Health Metrics
+        height: formData.height,
+        weight: formData.weight,
+        bmi: formData.bmi,
+        bodyFat: formData.bodyFat,
+        muscleMass: formData.muscleMass,
+        
+        // Body Measurements
+        bodyMeasurements: formData.bodyMeasurements,
+        
+        // Workout Routine
+        workoutRoutine: formData.workoutRoutine,
+        
+        // Personal Trainer
+        personalTrainer: formData.personalTrainer,
+        
+        // Notes
+        notes: formData.notes,
+        
+        // Membership
+        nextBillDate: formData.nextBillDate
+      };
+
+      console.log("Sending member data:", memberData);
+      console.log("Required fields check:");
+      console.log("- name:", memberData.name);
+      console.log("- email:", memberData.email);
+      console.log("- phone:", memberData.phone);
+      console.log("- age:", memberData.age);
+      console.log("- gender:", memberData.gender);
+      console.log("- address:", memberData.address);
+      console.log("- profileImage:", memberData.profileImage);
+      console.log("- membership:", memberData.membership);
+      console.log("- height:", memberData.height);
+      console.log("- weight:", memberData.weight);
+
+      // Final validation check
+      const requiredFields = ['name', 'email', 'phone', 'age', 'gender', 'address', 'profileImage', 'membership', 'height', 'weight'];
+      const missingFields = requiredFields.filter(field => !memberData[field] || memberData[field].toString().trim() === '');
+      
+      if (missingFields.length > 0) {
+        toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.post('http://localhost:5000/members/register-member', memberData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true
+      });
+
+      if (response.status === 201) {
+        toast.success('Member added successfully!');
+        onClose();
+        if (onMemberAdded) {
+          onMemberAdded();
+        }
+      }
+    } catch (error) {
+      console.error('Error adding member:', error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to add member. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const tabs = [
+    { id: 'basic', label: 'Basic Info', icon: <FaUser /> },
+    { id: 'health', label: 'Health Metrics', icon: <FaHeartbeat /> },
+    { id: 'measurements', label: 'Body Measurements', icon: <FaRuler /> },
+    { id: 'workout', label: 'Workout Routine', icon: <FaDumbbell /> },
+    { id: 'trainer', label: 'Personal Trainer', icon: <FaUserTie /> }
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl w-full max-w-6xl max-h-[90vh] border border-white/20 shadow-xl overflow-hidden">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">Add New Member</h2>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+            >
+              <FaTimes />
+            </button>
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="flex space-x-1 mb-6 bg-white/5 rounded-lg p-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6 max-h-[60vh] overflow-y-auto">
+            {/* Basic Information Tab */}
+            {activeTab === 'basic' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Full Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleChange(e, "name")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Email Address *</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleChange(e, "email")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Phone Number *</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handleChange(e, "phone")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Age *</label>
+                  <input
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => handleChange(e, "age")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    min="1"
+                    max="120"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Gender *</label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => handleChange(e, "gender")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    required
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Profile Image <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    onChange={handleImageChange}
+                    required
+                  />
+                  {formData.profileImage && (
+                    <div className="mt-4 flex justify-center items-center h-24 w-24 mx-auto">
+                      {isUploading ? (
+                        <svg
+                          className="animate-spin h-8 w-8 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8H4z"
+                          />
+                        </svg>
+                      ) : (
+                        <img
+                          src={formData.profileImage}
+                          alt="Profile Preview"
+                          className="h-24 w-24 object-cover rounded-full border-2 border-blue-400 shadow"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Address *</label>
+                  <textarea
+                    value={formData.address}
+                    onChange={(e) => handleChange(e, "address")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white resize-none"
+                    rows="3"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Membership Plan *</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.membership}
+                      onChange={(e) => handleChange(e, "membership")}
+                      className="flex-1 px-4 py-2 bg-gray-800 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                      required
+                      disabled={membershipsLoading}
+                    >
+                      <option value="">
+                        {membershipsLoading ? "Loading plans..." : "Select Plan"}
+                      </option>
+                      {!membershipsLoading && memberships.length > 0 ? (
+                        memberships.map((membership) => (
+                          <option key={membership._id} value={membership._id}>
+                            {membership.months} Month{membership.months > 1 ? 's' : ''} - ₹{membership.price}
+                          </option>
+                        ))
+                      ) : !membershipsLoading && memberships.length === 0 ? (
+                        <option value="" disabled>No membership plans available</option>
+                      ) : null}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={fetchMemberships}
+                      disabled={membershipsLoading}
+                      className="px-3 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 rounded-lg transition-all text-white"
+                      title="Refresh membership plans"
+                    >
+                      ↻
+                    </button>
+                  </div>
+                  {!membershipsLoading && memberships.length === 0 && (
+                    <p className="text-sm text-red-400 mt-1">
+                      Please add membership plans first using the "Add Membership" button
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Next Bill Date *</label>
+                  <input
+                    type="date"
+                    value={formData.nextBillDate}
+                    onChange={(e) => handleChange(e, "nextBillDate")}
+                    className="w-full px-4 py-2 bg-gray-800 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Health Metrics Tab */}
+            {activeTab === 'health' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Height (cm) *</label>
+                  <input
+                    type="number"
+                    value={formData.height}
+                    onChange={(e) => handleChange(e, "height")}
+                    onBlur={calculateBMI}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    min="100"
+                    max="250"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Weight (kg) *</label>
+                  <input
+                    type="number"
+                    value={formData.weight}
+                    onChange={(e) => handleChange(e, "weight")}
+                    onBlur={calculateBMI}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    min="20"
+                    max="300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">BMI</label>
+                  <input
+                    type="number"
+                    value={formData.bmi}
+                    readOnly
+                    className="w-full px-4 py-2 bg-gray-700 border border-white/20 rounded-lg text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Body Fat (%)</label>
+                  <input
+                    type="number"
+                    value={formData.bodyFat}
+                    onChange={(e) => handleChange(e, "bodyFat")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    min="0"
+                    max="50"
+                    step="0.1"
+                    placeholder="e.g., 15.5"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Muscle Mass (kg)</label>
+                  <input
+                    type="number"
+                    value={formData.muscleMass}
+                    onChange={(e) => handleChange(e, "muscleMass")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    min="0"
+                    max="200"
+                    step="0.1"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Notes</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => handleChange(e, "notes")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white resize-none"
+                    rows="3"
+                    placeholder="Any health conditions, allergies, preferences..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Body Measurements Tab */}
+            {activeTab === 'measurements' && (
+              <div>
+                <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-300">
+                    💡 <strong>Tip:</strong> Body fat percentage will be calculated automatically when you fill in chest, waist, hips, and neck measurements.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Object.entries(formData.bodyMeasurements).map(([key, value]) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-gray-300 mb-2 capitalize">
+                        {key} (cm)
+                      </label>
+                      <input
+                        type="number"
+                        value={value}
+                        onChange={(e) => handleChange(e, "bodyMeasurements", key)}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                        min="0"
+                        max="200"
+                        step="0.1"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Workout Routine Tab */}
+            {activeTab === 'workout' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.entries(formData.workoutRoutine).map(([day, routine]) => (
+                  <div key={day}>
+                    <label className="block text-sm font-medium text-gray-300 mb-2 capitalize">
+                      {day}
+                    </label>
+                    <input
+                      type="text"
+                      value={routine}
+                      onChange={(e) => handleChange(e, "workoutRoutine", day)}
+                      className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                      placeholder="e.g., Chest, Triceps"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Personal Trainer Tab */}
+            {activeTab === 'trainer' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Trainer Name</label>
+                  <input
+                    type="text"
+                    value={formData.personalTrainer.name}
+                    onChange={(e) => handleChange(e, "personalTrainer", "name")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    placeholder="e.g., Rohit Mehra"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Trainer Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.personalTrainer.phone}
+                    onChange={(e) => handleChange(e, "personalTrainer", "phone")}
+                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    placeholder="e.g., 9876543222"
+                  />
+                </div>
+              </div>
+            )}
+          </form>
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between items-center pt-6 border-t border-white/10">
+            <div className="flex gap-2">
+              {tabs.map((tab, index) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3 py-1 rounded text-sm ${
+                    activeTab === tab.id
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white/10 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2 bg-gray-800 hover:bg-white/20 rounded-lg transition-all text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className={`px-6 py-2 rounded-lg transition-all text-white ${
+                  loading 
+                    ? 'bg-gray-600 cursor-not-allowed' 
+                    : 'bg-blue-500 hover:bg-blue-600'
+                }`}
+              >
+                {loading ? 'Adding...' : 'Add Member'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AddMemberModal; 
