@@ -2,9 +2,6 @@ import React from 'react';
 import Sidebar from '../components/sidebar.jsx';
 import { 
   FaDumbbell, 
-  FaHeartbeat, 
-  FaRunning, 
-  FaUserFriends,
   FaCog,
   FaCheckCircle,
   FaExclamationTriangle

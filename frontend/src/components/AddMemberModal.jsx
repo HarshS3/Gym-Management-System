@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
   const [activeTab, setActiveTab] = useState('personal');
   const [loading, setLoading] = useState(false);
+  const [membershipsLoading, setMembershipsLoading] = useState(false);
   const [formData, setFormData] = useState({
     // Basic Information
     name: '',
@@ -68,27 +69,21 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
   });
   const [memberships, setMemberships] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [membershipsLoading, setMembershipsLoading] = useState(false);
 
   const fetchMemberships = async () => {
     try {
-      // console.log("Fetching memberships...");
-      // console.log("Current authentication status:", localStorage.getItem('isLoggedIn'));
-      
+      setMembershipsLoading(true);
       const response = await axios.get('http://localhost:5000/plans/get-membership', {
         withCredentials: true
       });
       
-      // console.log("Membership response:", response.data);
-      // console.log("Response status:", response.status);
-      
       if (response.data.success) {
-        // console.log("Memberships set:", response.data.membership);
-        // console.log("Memberships count:", response.data.membership.length);
         setMemberships(response.data.membership || []);
       }
     } catch (error) {
       console.error('Error fetching memberships:', error);
+    } finally {
+      setMembershipsLoading(false);
     }
   };
   useEffect(() => {
@@ -108,7 +103,6 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
 
     // Convert height from cm to inches if needed
     const heightInches = height > 100 ? height / 2.54 : height;
-    const weightLbs = weight > 100 ? weight * 2.20462 : weight;
     
     // U.S. Navy method for body fat calculation
     // For men: BF% = 495 / (1.0324 - 0.19077 * log10(waist - neck) + 0.15456 * log10(height)) - 450
@@ -304,29 +298,6 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
         nextBillDate: formData.nextBillDate
       };
 
-      // console.log("Sending member data:", memberData);
-      // console.log("Required fields check:");
-      // console.log("- name:", memberData.name);
-      // console.log("- email:", memberData.email);
-      // console.log("- phone:", memberData.phone);
-      // console.log("- age:", memberData.age);
-      // console.log("- gender:", memberData.gender);
-      // console.log("- address:", memberData.address);
-      // console.log("- profileImage:", memberData.profileImage);
-      // console.log("- membership:", memberData.membership);
-      // console.log("- height:", memberData.height);
-      // console.log("- weight:", memberData.weight);
-
-      // Final validation check
-      const requiredFields = ['name', 'email', 'phone', 'age', 'gender', 'address', 'profileImage', 'membership', 'height', 'weight'];
-      const missingFields = requiredFields.filter(field => !memberData[field] || memberData[field].toString().trim() === '');
-      
-      if (missingFields.length > 0) {
-        toast.error(`Missing required fields: ${missingFields.join(', ')}`);
-        setLoading(false);
-        return;
-      }
-
       const response = await axios.post('http://localhost:5000/members/register-member', memberData, {
         headers: {
           'Content-Type': 'application/json',
@@ -336,6 +307,54 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
 
       if (response.status === 201) {
         toast.success('Member added successfully!');
+        // Reset form data to initial state
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          dateOfBirth: '',
+          gender: '',
+          profileImage: '',
+          address: '',
+          emergencyContact: {
+            name: '',
+            phone: '',
+            relationship: ''
+          },
+          height: '',
+          weight: '',
+          bmi: '',
+          bodyFat: '',
+          muscleMass: '',
+          bodyMeasurements: {
+            chest: '',
+            waist: '',
+            hips: '',
+            biceps: '',
+            thighs: '',
+            calves: '',
+            wrist: '',
+            neck: '',
+            forearm: '',
+            ankle: ''
+          },
+          workoutRoutine: {
+            monday: 'Rest',
+            tuesday: 'Rest',
+            wednesday: 'Rest',
+            thursday: 'Rest',
+            friday: 'Rest',
+            saturday: 'Rest',
+            sunday: 'Rest'
+          },
+          personalTrainer: {
+            name: '',
+            phone: ''
+          },
+          notes: '',
+          membership: '',
+          nextBillDate: ''
+        });
         onClose();
         if (onMemberAdded) {
           onMemberAdded();
@@ -525,6 +544,7 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
                       className="flex-1 px-4 py-2 bg-gray-800 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
                       required
                       disabled={membershipsLoading}
+                      
                     >
                       <option value="">
                         {membershipsLoading ? "Loading plans..." : "Select Plan"}
@@ -659,18 +679,29 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {Object.entries(formData.bodyMeasurements).map(([key, value]) => (
+                  {Object.entries({
+                    chest: { min: 50, max: 200 },
+                    waist: { min: 40, max: 200 },
+                    hips: { min: 50, max: 200 },
+                    biceps: { min: 20, max: 100 },
+                    thighs: { min: 30, max: 120 },
+                    calves: { min: 20, max: 80 },
+                    wrist: { min: 10, max: 30 },
+                    neck: { min: 20, max: 80 },
+                    forearm: { min: 15, max: 60 },
+                    ankle: { min: 15, max: 50 }
+                  }).map(([key, range]) => (
                     <div key={key}>
                       <label className="block text-sm font-medium text-gray-300 mb-2 capitalize">
-                        {key} (cm)
+                        {key} (cm) - ({range.min}-{range.max}cm)
                       </label>
                       <input
                         type="number"
-                        value={value}
+                        value={formData.bodyMeasurements[key]}
                         onChange={(e) => handleChange(e, "bodyMeasurements", key)}
                         className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white"
-                        min="0"
-                        max="200"
+                        min={range.min}
+                        max={range.max}
                         step="0.1"
                       />
                     </div>

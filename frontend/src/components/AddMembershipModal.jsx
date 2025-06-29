@@ -50,7 +50,7 @@ const AddMembershipModal = ({ isOpen, onClose }) => {
     }
 
     try {
-      setIsSubmitting(true);
+      setLoading(true);
       // console.log("Adding membership:", formData);
       
       const response = await axios.post(

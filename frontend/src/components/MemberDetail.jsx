@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './sidebar.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { config } from '../config/config.js';
 
 const availableMemberships = [
   { id: '1', name: 'Basic Plan', months: 1, price: 1000 },
@@ -26,7 +27,7 @@ const MemberDetail = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await axios.get(`http://localhost:5000/members/member-detail/${id}`, { withCredentials: true });
+        const response = await axios.get(`${config.apiUrl}/members/member-detail/${id}`, { withCredentials: true });
         if (response.data.success) {
           setMember(response.data.member);
           setMemberStatus(response.data.member.status);
@@ -48,7 +49,7 @@ const MemberDetail = () => {
     const newStatus = memberStatus === 'Active' ? 'Inactive' : 'Active';
     setMemberStatus(newStatus);
     try {
-      await axios.post(`http://localhost:5000/members/change-status/${id}`, { status: newStatus }, { withCredentials: true });
+      await axios.post(`${config.apiUrl}/members/change-status/${id}`, { status: newStatus }, { withCredentials: true });
       setMember((prev) => ({ ...prev, status: newStatus }));
     } catch (error) {
       setError('Error updating status');
@@ -64,9 +65,9 @@ const MemberDetail = () => {
     }
     setIsRenewing(true);
     try {
-      await axios.put(`http://localhost:5000/members/renew-membership/${id}`, { membershipId: selectedMembership }, { withCredentials: true });
+      await axios.put(`${config.apiUrl}/members/renew-membership/${id}`, { membershipId: selectedMembership }, { withCredentials: true });
       // Refetch member details after renewal
-      const response = await axios.get(`http://localhost:5000/members/member-detail/${id}`, { withCredentials: true });
+      const response = await axios.get(`${config.apiUrl}/members/member-detail/${id}`, { withCredentials: true });
       if (response.data.success) {
         setMember(response.data.member);
         setMemberStatus(response.data.member.status);

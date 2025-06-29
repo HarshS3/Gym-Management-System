@@ -6,17 +6,13 @@ import AddMembershipModal from '../components/AddMembershipModal';
 import axios from 'axios';
 import { 
   FaSearch, 
-  FaFilter, 
   FaUserPlus,
-  FaSortAmountDown,
   FaIdCard
 } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { config } from '../config/config.js';
 
 const Members = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddMembershipModalOpen, setIsAddMembershipModalOpen] = useState(false);
 
@@ -26,24 +22,20 @@ const Members = () => {
   const [totalMembers, setTotalMembers] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [limit, setLimit] = useState(10);
-  const [members,setMembers] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(()=>{
+  useEffect(() => {
     fetchData();
-  },[currentPage]);
+  }, [currentPage]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const skip = (currentPage - 1) * limit;
-      // console.log("Fetching members with skip:", skip, "limit:", limit);
-      
-      const response = await axios.get(`http://localhost:5000/members/get-all-members?skip=${skip}&limit=${limit}`, {
+      const response = await axios.get(`${config.apiUrl}/members/get-all-members?skip=${skip}&limit=${limit}`, {
         withCredentials: true
       });
-      
-      // console.log("Members response:", response.data);
       
       if (response.data.success) {
         setMembers(response.data.members || []);
@@ -70,80 +62,24 @@ const Members = () => {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const refreshMembers = () => {
     fetchData();
   };
 
-  // Filter and sort members
-  const getFilteredAndSortedMembers = () => {
-    let filtered = [...members];
+  // Filter members based on search term
+  const getFilteredMembers = () => {
+    if (!searchTerm) return members;
 
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(member => 
-        member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.phone?.includes(searchTerm)
-      );
-    }
-
-    // Apply status filter
-    if (filterStatus !== 'all') {
-      const today = new Date();
-      
-      filtered = filtered.filter(member => {
-        const membershipEndDate = new Date(member.membership?.endDate);
-        
-        if (filterStatus === 'active') {
-          return membershipEndDate > today;
-        } else if (filterStatus === 'inactive') {
-          return !member.membership?.endDate || membershipEndDate <= today;
-        }
-        return true;
-      });
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue, bValue;
-      
-      if (sortBy === 'name') {
-        aValue = a.name || '';
-        bValue = b.name || '';
-      } else if (sortBy === 'date') {
-        aValue = new Date(a.createdAt || 0);
-        bValue = new Date(b.createdAt || 0);
-      } else if (sortBy === 'status') {
-        aValue = getMemberStatus(a.membership?.endDate);
-        bValue = getMemberStatus(b.membership?.endDate);
-      } else {
-        aValue = a.name || '';
-        bValue = b.name || '';
-      }
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return aValue.localeCompare(bValue);
-      } else {
-        return aValue - bValue;
-      }
-    });
-
-    return filtered;
+    return members.filter(member => 
+      member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.phone?.includes(searchTerm)
+    );
   };
 
-  const getMemberStatus = (endDate) => {
-    if (!endDate) return 'Inactive';
-    
-    const today = new Date();
-    const end = new Date(endDate);
-    
-    if (end > today) return 'Active';
-    return 'Inactive';
-  };
-
-  const filteredMembers = getFilteredAndSortedMembers();
+  const filteredMembers = getFilteredMembers();
 
   return (
     <div>
@@ -171,9 +107,8 @@ const Members = () => {
             </div>
           </div>
 
-          {/* Search and Filter Section */}
+          {/* Search Section */}
           <div className="grid grid-cols-1 gap-6 mb-8">
-            {/* Search Bar */}
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
@@ -213,7 +148,7 @@ const Members = () => {
                 </thead>
                 <tbody className="divide-y divide-white/10">
                   {filteredMembers.map((member) => (
-                      <MemberStrip key={member._id} member={member} onStatusChange={refreshMembers} />
+                    <MemberStrip key={member._id} member={member} onStatusChange={refreshMembers} />
                   ))}
                 </tbody>
               </table>

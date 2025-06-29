@@ -6,7 +6,6 @@ import {
   FaMoneyBillWave, 
   FaCalendarCheck, 
   FaBell, 
-  FaChartLine,
   FaUserPlus,
   FaUserClock,
   FaUserCheck,

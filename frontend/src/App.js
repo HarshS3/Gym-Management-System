@@ -14,7 +14,7 @@ import Settings from './pages/Settings.jsx';
 import { Toaster } from 'react-hot-toast';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-
+import { config } from './config/config.js';
 function App() {
     
   const [isLogin, setIsLogin] = useState(false);
@@ -29,7 +29,7 @@ function App() {
         if (isLoggedIn === 'true') {
           // Verify with backend to ensure session is still valid
           try {
-            await axios.get('http://localhost:5000/auth/verify', {
+            await axios.get(`${config.apiUrl}/auth/verify`, {
               withCredentials: true
             });
             setIsLogin(true);
