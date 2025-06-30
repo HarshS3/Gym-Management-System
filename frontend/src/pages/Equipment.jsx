@@ -1,73 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/sidebar.jsx';
 import { 
   FaDumbbell, 
   FaCog,
   FaCheckCircle,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaPlus
 } from 'react-icons/fa';
+import axios from 'axios';
+import { config } from '../config/config.js';
+import AddEquipmentModal from '../components/AddEquipmentModal.jsx';
 
 const Equipment = () => {
-  const equipmentData = {
-    "Chest": [
-      { name: "Bench Press", status: "active", location: "Main Floor", quantity: 2 },
-      { name: "Incline Bench Press", status: "active", location: "Main Floor", quantity: 1 },
-      { name: "Decline Bench Press", status: "maintenance", location: "Main Floor", quantity: 1 },
-      { name: "Chest Fly Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Cable Crossover", status: "active", location: "Cable Station", quantity: 1 },
-      { name: "Dumbbell Bench", status: "active", location: "Free Weight Area", quantity: 3 }
-    ],
-    "Back": [
-      { name: "Lat Pulldown Machine", status: "active", location: "Machine Area", quantity: 2 },
-      { name: "Seated Row Machine", status: "active", location: "Machine Area", quantity: 2 },
-      { name: "T-Bar Row", status: "active", location: "Free Weight Area", quantity: 1 },
-      { name: "Cable Row", status: "active", location: "Cable Station", quantity: 1 },
-      { name: "Pull-up Bar", status: "active", location: "Functional Area", quantity: 2 },
-      { name: "Assisted Pull-up Machine", status: "active", location: "Machine Area", quantity: 1 }
-    ],
-    "Legs": [
-      { name: "Squat Rack", status: "active", location: "Powerlifting Area", quantity: 2 },
-      { name: "Leg Press Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Leg Extension Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Leg Curl Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Hack Squat Machine", status: "maintenance", location: "Machine Area", quantity: 1 },
-      { name: "Calf Raise Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Smith Machine", status: "active", location: "Main Floor", quantity: 1 }
-    ],
-    "Shoulders": [
-      { name: "Shoulder Press Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Lateral Raise Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Cable Lateral Raise", status: "active", location: "Cable Station", quantity: 1 },
-      { name: "Military Press Rack", status: "active", location: "Free Weight Area", quantity: 1 }
-    ],
-    "Arms": [
-      { name: "Bicep Curl Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Tricep Extension Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Cable Bicep Curl", status: "active", location: "Cable Station", quantity: 1 },
-      { name: "Cable Tricep Pushdown", status: "active", location: "Cable Station", quantity: 1 },
-      { name: "Preacher Curl Bench", status: "active", location: "Free Weight Area", quantity: 1 }
-    ],
-    "Core": [
-      { name: "Ab Crunch Machine", status: "active", location: "Machine Area", quantity: 1 },
-      { name: "Roman Chair", status: "active", location: "Functional Area", quantity: 2 },
-      { name: "Cable Woodchopper", status: "active", location: "Cable Station", quantity: 1 },
-      { name: "Ab Wheel", status: "active", location: "Functional Area", quantity: 5 }
-    ],
-    "Cardio": [
-      { name: "Treadmill", status: "active", location: "Cardio Area", quantity: 6 },
-      { name: "Elliptical", status: "active", location: "Cardio Area", quantity: 4 },
-      { name: "Stationary Bike", status: "active", location: "Cardio Area", quantity: 3 },
-      { name: "Rowing Machine", status: "active", location: "Cardio Area", quantity: 2 },
-      { name: "StairMaster", status: "maintenance", location: "Cardio Area", quantity: 1 }
-    ],
-    "Functional Training": [
-      { name: "TRX Suspension Trainer", status: "active", location: "Functional Area", quantity: 3 },
-      { name: "Kettlebell Set", status: "active", location: "Functional Area", quantity: 8 },
-      { name: "Resistance Bands", status: "active", location: "Functional Area", quantity: 12 },
-      { name: "Medicine Balls", status: "active", location: "Functional Area", quantity: 6 },
-      { name: "Battle Ropes", status: "active", location: "Functional Area", quantity: 2 }
-    ]
-  };
+  const [equipmentData, setEquipmentData] = useState({});
+  const [isAddOpen, setIsAddOpen] = useState(false);
+
+  const fetchEquipments = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${config.apiUrl}/equipment`, { withCredentials: true });
+      if (data.success) {
+        // Group by muscleGroup
+        const grouped = {};
+        data.equipments.forEach(eq => {
+          if (!grouped[eq.muscleGroup]) grouped[eq.muscleGroup] = [];
+          grouped[eq.muscleGroup].push(eq);
+        });
+        setEquipmentData(grouped);
+      }
+    } catch (err) {
+      console.error('Error loading equipments', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEquipments();
+  }, [fetchEquipments]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -105,9 +72,14 @@ const Equipment = () => {
       <div className="flex bg-gradient-to-br from-black via-gray-900 to-gray-800">
         <div className="ml-64 w-full min-h-screen p-10 text-white overflow-y-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Equipment Management</h1>
-            <p className="text-gray-400">Track and manage all gym equipment by muscle groups</p>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Equipment Management</h1>
+              <p className="text-gray-400">Track and manage all gym equipment by muscle groups</p>
+            </div>
+            <button onClick={()=>setIsAddOpen(true)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-2">
+              <FaPlus /> Add
+            </button>
           </div>
 
           {/* Equipment Stats */}
@@ -173,6 +145,7 @@ const Equipment = () => {
               </div>
             ))}
           </div>
+          <AddEquipmentModal isOpen={isAddOpen} onClose={()=>setIsAddOpen(false)} onAdded={fetchEquipments} />
         </div>
       </div>
     </div>

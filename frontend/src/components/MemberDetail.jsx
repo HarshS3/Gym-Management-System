@@ -5,6 +5,8 @@ import axios from 'axios';
 import { config } from '../config/config.js';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { FaEdit } from 'react-icons/fa';
+import EditMemberModal from './EditMemberModal.jsx';
 
 // Membership plans will be fetched from backend
 
@@ -18,6 +20,7 @@ const MemberDetail = () => {
   const [selectedMembership, setSelectedMembership] = useState('');
   const [isRenewing, setIsRenewing] = useState(false);
   const [availablePlans, setAvailablePlans] = useState([]);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   // Fetch member details
   useEffect(() => {
@@ -190,12 +193,20 @@ const MemberDetail = () => {
             >
               ← Back to Members
             </button>
-            <button
-              className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all"
-              onClick={exportToPDF}
-            >
-              Export PDF
-            </button>
+            <div className="flex gap-2">
+              <button
+                className="px-4 py-2 bg-yellow-600 rounded-lg hover:bg-yellow-700 transition-all flex items-center gap-2"
+                onClick={() => setIsEditOpen(true)}
+              >
+                <FaEdit /> Edit
+              </button>
+              <button
+                className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all"
+                onClick={exportToPDF}
+              >
+                Export PDF
+              </button>
+            </div>
           </div>
           <div className="bg-white/10 rounded-2xl shadow-lg border border-blue-500/30 p-10 w-full max-w-xl flex flex-col items-center">
             <div className="mb-4 text-blue-400 font-bold text-lg">Member ID: {member._id}</div>
@@ -394,6 +405,20 @@ const MemberDetail = () => {
               )}
             </div>
           </div>
+          <EditMemberModal
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            member={member}
+            onUpdated={() => {
+              // refetch member
+              axios.get(`${config.apiUrl}/members/member-detail/${id}`, { withCredentials: true }).then(res=>{
+                if(res.data.success){
+                  setMember(res.data.member);
+                  setMemberStatus(res.data.member.status);
+                }
+              });
+            }}
+          />
         </div>
       </div>
     </div>

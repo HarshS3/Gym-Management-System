@@ -65,6 +65,13 @@ const Dashboard = () => {
       const inactiveCount = statusResponse.data.data.find(item => item.status === 'Inactive')?.count || 0;
 
       // ---------------------------------------------------------------------
+      // Fetch equipment list to show active equipment count
+      // ---------------------------------------------------------------------
+      const equipmentResponse = await axios.get(`${config.apiUrl}/equipment`, { withCredentials: true });
+      const allEquip = equipmentResponse.data.success ? equipmentResponse.data.equipments : [];
+      const activeEquipCount = allEquip.filter(eq => eq.status === 'active').length;
+
+      // ---------------------------------------------------------------------
       // Fetch monthly revenue from backend analytics to align with chart data
       // ---------------------------------------------------------------------
       const revenueResponse = await axios.get(`${config.apiUrl}/analytics/monthly-revenue`, {
@@ -105,7 +112,7 @@ const Dashboard = () => {
         activeMembers: activeCount,
         newRegistrations: newRegistrationsResponse.data.monthlyMembersCount || 0,
         expiredMembers: expiredMembersResponse.data.expiredMembersCount ?? inactiveCount,
-        activeEquipment: 37, // Static for now
+        activeEquipment: activeEquipCount,
         todayAttendance: 58, // Static for now
         monthlyRevenue: finalMonthlyRevenue
       });
