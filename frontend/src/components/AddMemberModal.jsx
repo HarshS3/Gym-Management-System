@@ -1,79 +1,73 @@
 import React, { useState,useEffect } from 'react';
-import { FaTimes, FaUser, FaHeartbeat, FaRuler, FaDumbbell, FaUserTie } from 'react-icons/fa';
+import { FaTimes, FaUser, FaHeartbeat, FaRuler, FaDumbbell, FaUserTie, FaCreditCard } from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { config } from '../config/config.js';
+import { payWithRazorpay } from '../utils/payWithRazorpay';
+
+// Pristine form template (outside component so it's not recreated on every render)
+const emptyForm = {
+  name: '',
+  email: '',
+  phone: '',
+  dateOfBirth: '',
+  gender: '',
+  profileImage: '',
+  address: '',
+  emergencyContact: { name: '', phone: '', relationship: '' },
+  height: '',
+  weight: '',
+  bmi: '',
+  bodyFat: '',
+  muscleMass: '',
+  bodyMeasurements: {
+    chest: '', waist: '', hips: '', biceps: '', thighs: '', calves: '',
+    wrist: '', neck: '', forearm: '', ankle: ''
+  },
+  workoutRoutine: {
+    monday: 'Rest', tuesday: 'Rest', wednesday: 'Rest', thursday: 'Rest',
+    friday: 'Rest', saturday: 'Rest', sunday: 'Rest'
+  },
+  personalTrainer: { name: '', phone: '' },
+  notes: '',
+  membership: '',
+  nextBillDate: ''
+};
 
 const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = useState('basic');
   const [loading, setLoading] = useState(false);
   const [membershipsLoading, setMembershipsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    // Basic Information
-    name: '',
-    email: '',
-    phone: '',
-    dateOfBirth: '',
-    gender: '',
-    profileImage: '',
-    address: '',
-    emergencyContact: {
-      name: '',
-      phone: '',
-      relationship: ''
-    },
-    
-    // Health Metrics
-    height: '',
-    weight: '',
-    bmi: '',
-    bodyFat: '',
-    muscleMass: '',
-    
-    // Body Measurements
-    bodyMeasurements: {
-      chest: '',
-      waist: '',
-      hips: '',
-      biceps: '',
-      thighs: '',
-      calves: '',
-      wrist: '',
-      neck: '',
-      forearm: '',
-      ankle: ''
-    },
-    
-    // Workout Routine
-    workoutRoutine: {
-      monday: 'Rest',
-      tuesday: 'Rest',
-      wednesday: 'Rest',
-      thursday: 'Rest',
-      friday: 'Rest',
-      saturday: 'Rest',
-      sunday: 'Rest'
-    },
-    
-    // Personal Trainer
-    personalTrainer: {
-      name: '',
-      phone: ''
-    },
-    
-    // Notes
-    notes: '',
-    
-    // Membership
-    membership: '',
-    nextBillDate: ''
-  });
+  const [formData, setFormData] = useState(emptyForm);
   const [memberships, setMemberships] = useState([]);
+  const [selectedMembershipDetails, setSelectedMembershipDetails] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState('pending'); // 'pending' | 'success'
+  const [paymentMode, setPaymentMode] = useState('cash'); // 'cash' | 'online'
   const [isUploading, setIsUploading] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState(null);
+
+  // Helper to reset all modal-specific state
+  const resetModalState = () => {
+    setFormData(emptyForm);
+    setSelectedMembershipDetails(null);
+    setActiveTab('basic');
+    setPaymentMode('cash');
+    setPaymentStatus('pending');
+    setIsUploading(false);
+    setPaymentInfo(null);
+  };
+
+  // When the modal is closed (isOpen -> false), reset internal state
+  useEffect(() => {
+    if (!isOpen) {
+      resetModalState();
+    }
+  }, [isOpen]);
 
   const fetchMemberships = async () => {
     try {
       setMembershipsLoading(true);
-      const response = await axios.get('http://localhost:5000/plans/get-membership', {
+      const response = await axios.get(`${config.apiUrl}/plans/get-membership`, {
         withCredentials: true
       });
       
@@ -146,18 +140,30 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
         [field]: value
       }));
 
-      // Calculate next bill date when membership is selected
+      // Calculate next bill date when membership is selected & reset payment status
       if (field === "membership") {
         const selectedMembership = memberships.find(m => m._id === value);
         if (selectedMembership) {
           const today = new Date();
           const nextBillDate = new Date(today);
           nextBillDate.setMonth(today.getMonth() + selectedMembership.months);
-          
+
+          setSelectedMembershipDetails(selectedMembership);
+          setPaymentStatus('pending');
+
           setFormData(prev => ({
             ...prev,
             [field]: value,
             nextBillDate: nextBillDate.toISOString().split('T')[0]
+          }));
+        } else {
+          // If no membership selected or invalid value, reset payment info
+          setSelectedMembershipDetails(null);
+          setPaymentStatus('pending');
+          setFormData(prev => ({
+            ...prev,
+            [field]: value,
+            nextBillDate: ''
           }));
         }
       }
@@ -200,6 +206,11 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (paymentMode === 'online' && paymentStatus !== 'success') {
+      toast.error('Please complete the online payment before adding the member');
+      return;
+    }
+
     // Validate all required fields based on what's actually in the form
     const requiredFields = {
       'Name': formData.name,
@@ -264,41 +275,12 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
     setLoading(true);
     try {
       // Prepare data in the format expected by the backend
-      const memberData = {
-        // Basic Information
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        age: formData.age,
-        gender: formData.gender,
-        address: formData.address,
-        profileImage: formData.profileImage,
-        membership: formData.membership,
-        
-        // Health Metrics
-        height: formData.height,
-        weight: formData.weight,
-        bmi: formData.bmi,
-        bodyFat: formData.bodyFat,
-        muscleMass: formData.muscleMass,
-        
-        // Body Measurements
-        bodyMeasurements: formData.bodyMeasurements,
-        
-        // Workout Routine
-        workoutRoutine: formData.workoutRoutine,
-        
-        // Personal Trainer
-        personalTrainer: formData.personalTrainer,
-        
-        // Notes
-        notes: formData.notes,
-        
-        // Membership
-        nextBillDate: formData.nextBillDate
+      const payload = {
+        ...formData,
+        paymentMode,
+        paymentInfo,
       };
-
-      const response = await axios.post('http://localhost:5000/members/register-member', memberData, {
+      const response = await axios.post(`${config.apiUrl}/members/register-member`, payload, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -308,53 +290,7 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
       if (response.status === 201) {
         toast.success('Member added successfully!');
         // Reset form data to initial state
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          dateOfBirth: '',
-          gender: '',
-          profileImage: '',
-          address: '',
-          emergencyContact: {
-            name: '',
-            phone: '',
-            relationship: ''
-          },
-          height: '',
-          weight: '',
-          bmi: '',
-          bodyFat: '',
-          muscleMass: '',
-          bodyMeasurements: {
-            chest: '',
-            waist: '',
-            hips: '',
-            biceps: '',
-            thighs: '',
-            calves: '',
-            wrist: '',
-            neck: '',
-            forearm: '',
-            ankle: ''
-          },
-          workoutRoutine: {
-            monday: 'Rest',
-            tuesday: 'Rest',
-            wednesday: 'Rest',
-            thursday: 'Rest',
-            friday: 'Rest',
-            saturday: 'Rest',
-            sunday: 'Rest'
-          },
-          personalTrainer: {
-            name: '',
-            phone: ''
-          },
-          notes: '',
-          membership: '',
-          nextBillDate: ''
-        });
+        setFormData(emptyForm);
         onClose();
         if (onMemberAdded) {
           onMemberAdded();
@@ -379,7 +315,8 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
     { id: 'health', label: 'Health Metrics', icon: <FaHeartbeat /> },
     { id: 'measurements', label: 'Body Measurements', icon: <FaRuler /> },
     { id: 'workout', label: 'Workout Routine', icon: <FaDumbbell /> },
-    { id: 'trainer', label: 'Personal Trainer', icon: <FaUserTie /> }
+    { id: 'trainer', label: 'Personal Trainer', icon: <FaUserTie /> },
+    { id: 'payment', label: 'Payment', icon: <FaCreditCard /> }
   ];
 
   return (
@@ -756,6 +693,77 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
                 </div>
               </div>
             )}
+
+            {/* Payment Tab */}
+            {activeTab === 'payment' && (
+              <div className="flex flex-col items-center gap-6 py-10 text-center">
+                {/* Payment Mode Selection */}
+                <div className="flex gap-6">
+                  {['cash', 'online'].map((mode) => (
+                    <label key={mode} className="flex items-center gap-2 cursor-pointer select-none text-white">
+                      <input
+                        type="radio"
+                        name="paymentMode"
+                        value={mode}
+                        checked={paymentMode === mode}
+                        onChange={() => {
+                          setPaymentMode(mode);
+                          setPaymentStatus(mode === 'cash' ? 'success' : 'pending');
+                        }}
+                        className="form-radio h-5 w-5 text-blue-600"
+                      />
+                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </label>
+                  ))}
+                </div>
+
+                {selectedMembershipDetails ? (
+                  <>
+                    <p className="text-gray-300 mt-4">Membership Plan: {selectedMembershipDetails.months} Month{selectedMembershipDetails.months > 1 ? 's' : ''}</p>
+                    <p className="text-gray-300">Amount: <span className="text-white font-bold">₹{selectedMembershipDetails.price}</span></p>
+
+                    {paymentMode === 'online' && paymentStatus !== 'success' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!selectedMembershipDetails) return;
+
+                          const memberPlaceholder = {
+                            name: formData.name || 'Member',
+                            email: formData.email || 'example@example.com',
+                            phone: formData.phone || '9999999999',
+                            _id: 'temp',
+                          };
+
+                          payWithRazorpay({
+                            member: memberPlaceholder,
+                            membership: selectedMembershipDetails,
+                            onSuccess: (razResp) => {
+                              setPaymentStatus('success');
+                              setPaymentInfo(razResp);
+                              toast.success('Payment successful');
+                            }
+                          });
+                        }}
+                        className="px-8 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-all"
+                      >
+                        Pay Now
+                      </button>
+                    )}
+
+                    {paymentMode === 'cash' && (
+                      <p className="text-green-500 font-medium">Cash payment will be collected at the desk.</p>
+                    )}
+
+                    {paymentMode === 'online' && paymentStatus === 'success' && (
+                      <p className="text-green-500 font-medium">Payment Successful ✔</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-red-400">Please select a membership plan first.</p>
+                )}
+              </div>
+            )}
           </form>
 
           {/* Navigation Buttons */}
@@ -786,14 +794,18 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || (paymentMode === 'online' && paymentStatus !== 'success')}
                 className={`px-6 py-2 rounded-lg transition-all text-white ${
-                  loading 
-                    ? 'bg-gray-600 cursor-not-allowed' 
+                  loading || (paymentMode === 'online' && paymentStatus !== 'success')
+                    ? 'bg-gray-600 cursor-not-allowed'
                     : 'bg-blue-500 hover:bg-blue-600'
                 }`}
               >
-                {loading ? 'Adding...' : 'Add Member'}
+                {loading
+                  ? 'Adding...'
+                  : paymentMode === 'online' && paymentStatus !== 'success'
+                  ? 'Pay & Add Member'
+                  : 'Add Member'}
               </button>
             </div>
           </div>

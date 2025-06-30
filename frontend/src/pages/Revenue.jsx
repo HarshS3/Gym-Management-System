@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { config } from '../config/config.js';
 
 const Revenue = () => {
   const [revenueData, setRevenueData] = useState({
@@ -33,12 +34,12 @@ const Revenue = () => {
       setLoading(true);
       
       // Fetch new registrations for selected month
-      const newRegistrationsResponse = await axios.get('http://localhost:5000/members/monthly-members', {
+      const newRegistrationsResponse = await axios.get(`${config.apiUrl}/members/monthly-members`, {
         withCredentials: true
       });
       
       // Fetch all memberships to get pricing
-      const membershipsResponse = await axios.get('http://localhost:5000/plans/get-membership', {
+      const membershipsResponse = await axios.get(`${config.apiUrl}/plans/get-membership`, {
         withCredentials: true
       });
 

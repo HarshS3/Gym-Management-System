@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/sidebar.jsx';
 import MemberStrip from '../components/MemberStrip';
 import AddMemberModal from '../components/AddMemberModal';
@@ -21,15 +21,15 @@ const Members = () => {
   const [endTo, setEndTo] = useState(10);
   const [totalMembers, setTotalMembers] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [limit, setLimit] = useState(10);
+  const limit = 10;
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [currentPage]);
+  // Debounce timer holder
+  const [debounceTimer, setDebounceTimer] = useState(null);
 
-  const fetchData = async () => {
+  // Fetch members data for the current page
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const skip = (currentPage - 1) * limit;
@@ -62,24 +62,70 @@ const Members = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage]);
+
+  // Call the data-fetcher whenever the callback changes (i.e. when currentPage changes)
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  /* -------------------------------------------------
+     Server-side Search
+     Whenever the search term changes we request the
+     backend to return matching members from the
+     entire collection (no pagination). We debounce
+     the call by 400 ms to avoid spamming requests.
+  -------------------------------------------------*/
+  useEffect(() => {
+    // Clear previous debounce timer
+    if (debounceTimer) clearTimeout(debounceTimer);
+
+    // If search term empty → restore paginated list
+    if (!searchTerm) {
+      // Short timeout to avoid race conditions with fast typing
+      const timer = setTimeout(() => {
+        setCurrentPage(1);
+        fetchData();
+      }, 200);
+      setDebounceTimer(timer);
+      return;
+    }
+
+    // Debounced search request
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(`${config.apiUrl}/members/searched-members`, {
+          params: { searchTerm },
+          withCredentials: true,
+        });
+
+        if (res.data.success) {
+          setMembers(res.data.members || []);
+          setTotalMembers(res.data.members.length || 0);
+          setTotalPages(1);
+          setStartFrom(res.data.members.length ? 1 : 0);
+          setEndTo(res.data.members.length);
+        }
+      } catch (err) {
+        console.error('Error searching members:', err);
+      } finally {
+        setLoading(false);
+      }
+    }, 400); // 400ms debounce
+
+    setDebounceTimer(timer);
+
+    // Cleanup on unmount/term change
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const refreshMembers = () => {
     fetchData();
   };
 
-  // Filter members based on search term
-  const getFilteredMembers = () => {
-    if (!searchTerm) return members;
-
-    return members.filter(member => 
-      member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.phone?.includes(searchTerm)
-    );
-  };
-
-  const filteredMembers = getFilteredMembers();
+  // When using server-side search, members list already contains the filtered results
+  const displayedMembers = members;
 
   return (
     <div>
@@ -147,7 +193,7 @@ const Members = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
-                  {filteredMembers.map((member) => (
+                  {displayedMembers.map((member) => (
                     <MemberStrip key={member._id} member={member} onStatusChange={refreshMembers} />
                   ))}
                 </tbody>

@@ -4,6 +4,7 @@ import Membership from "../models/membership.model.js";
 import nodemailer from "nodemailer";
 import { emailMemberJsPdf } from "../utils/memberPdf.js";
 import dotenv from "dotenv";
+import Payment from "../models/payment.model.js";
 
 dotenv.config();
 
@@ -126,6 +127,71 @@ export const registerMember=async(req,res)=>{
             joinDate: joinDateObj,
             nextBillDate: calculatedNextBillDate
         });
+
+        // If online payment info provided, store payment record
+        const { paymentMode, paymentInfo } = req.body;
+        if (paymentMode === 'online' && paymentInfo && paymentInfo.razorpay_payment_id) {
+          try {
+            await Payment.create({
+              member: member._id,
+              membership: membership,
+              orderId: paymentInfo.razorpay_order_id,
+              paymentId: paymentInfo.razorpay_payment_id,
+              amount: membershipDetails.price, // rupees
+              currency: 'INR',
+              method: 'online',
+              status: 'captured',
+            });
+
+            // send invoice email (basic)
+            const transporterInv = nodemailer.createTransport({
+              host: 'smtp.gmail.com',
+              port: 587,
+              secure: false,
+              auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+              },
+              tls: { rejectUnauthorized: false },
+            });
+
+            await transporterInv.sendMail({
+              from: process.env.EMAIL_USER,
+              to: member.email,
+              subject: 'Payment Invoice - Gym Membership',
+              html: `<h3>Hi ${member.name},</h3>
+                <p>Thank you for your payment. Here are your transaction details:</p>
+                <ul>
+                  <li>Order ID: ${paymentInfo.razorpay_order_id}</li>
+                  <li>Payment ID: ${paymentInfo.razorpay_payment_id}</li>
+                  <li>Plan: ${membershipDetails.months} month(s)</li>
+                  <li>Amount: ₹${membershipDetails.price}</li>
+                  <li>Date: ${new Date().toLocaleDateString()}</li>
+                </ul>
+                <p>We appreciate your business and wish you success on your fitness journey!</p>`
+            });
+          } catch (payErr) {
+            console.error('Error storing payment or sending invoice:', payErr);
+          }
+        }
+
+        if (paymentMode === 'cash') {
+          try {
+            await Payment.create({
+              member: member._id,
+              membership,
+              orderId: 'CASH-' + Date.now(),
+              paymentId: 'CASH',
+              amount: membershipDetails.price * 100,
+              currency: 'INR',
+              method: 'cash',
+              status: 'received',
+            });
+            // (optional) send "cash receipt" e-mail here
+          } catch (err) {
+            console.error('Error storing cash payment:', err);
+          }
+        }
 
         // Generate PDF and email it – do not block response if email fails
         (async () => {

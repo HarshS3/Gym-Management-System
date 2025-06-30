@@ -9,17 +9,23 @@ import {
   FaUserPlus,
   FaUserClock,
   FaUserCheck,
-  FaUserFriends
+  FaUserFriends,
+  FaChartPie
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { config } from '../config/config.js';
+import MembershipDistribution from '../components/analytics/MembershipDistribution';
+import RevenueChart from '../components/analytics/RevenueChart';
+import MembershipStatus from '../components/analytics/MembershipStatus';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalMembers: 0,
+    activeMembers: 0,
     newRegistrations: 0,
-    expiringMemberships: 0,
+    expiredMembers: 0,
     activeEquipment: 37,
     todayAttendance: 58,
     monthlyRevenue: 42500
@@ -35,22 +41,30 @@ const Dashboard = () => {
       setLoading(true);
       
       // Fetch total members
-      const totalMembersResponse = await axios.get('http://localhost:5000/members/get-all-members?skip=0&limit=1', {
+      const totalMembersResponse = await axios.get(`${config.apiUrl}/members/get-all-members?skip=0&limit=1`, {
         withCredentials: true
       });
       
       // Fetch new registrations this month
-      const newRegistrationsResponse = await axios.get('http://localhost:5000/members/monthly-members', {
+      const newRegistrationsResponse = await axios.get(`${config.apiUrl}/members/monthly-members`, {
         withCredentials: true
       });
       
-      // Fetch expiring memberships
-      const expiringMembershipsResponse = await axios.get('http://localhost:5000/members/expiring-in-week', {
+      // Fetch expired members
+      const expiredMembersResponse = await axios.get(`${config.apiUrl}/members/expired-members`, {
         withCredentials: true
       });
 
+      // Fetch membership status distribution
+      const statusResponse = await axios.get(`${config.apiUrl}/analytics/membership-status`, {
+        withCredentials: true
+      });
+
+      // Get active members count
+      const activeCount = statusResponse.data.data.find(item => item.status === 'Active')?.count || 0;
+
       // Fetch all memberships to calculate revenue
-      const membershipsResponse = await axios.get('http://localhost:5000/plans/get-membership', {
+      const membershipsResponse = await axios.get(`${config.apiUrl}/plans/get-membership`, {
         withCredentials: true
       });
 
@@ -70,8 +84,9 @@ const Dashboard = () => {
 
       setStats({
         totalMembers: totalMembersResponse.data.totalMembers || 0,
+        activeMembers: activeCount,
         newRegistrations: newRegistrationsResponse.data.monthlyMembersCount || 0,
-        expiringMemberships: expiringMembershipsResponse.data.expiringMembersCount || 0,
+        expiredMembers: expiredMembersResponse.data.expiredMembersCount || 0,
         activeEquipment: 37, // Static for now
         todayAttendance: 58, // Static for now
         monthlyRevenue: calculatedRevenue
@@ -87,16 +102,16 @@ const Dashboard = () => {
   const membershipStatus = [
     {
       status: "Active",
-      count: stats.totalMembers - stats.expiringMemberships,
+      count: stats.activeMembers,
       color: "text-green-400",
       bgColor: "bg-green-500/20",
       icon: <FaUserCheck />
     },
     {
-      status: "Expiring Soon",
-      count: stats.expiringMemberships,
-      color: "text-yellow-400",
-      bgColor: "bg-yellow-500/20",
+      status: "Expired",
+      count: stats.expiredMembers,
+      color: "text-red-400",
+      bgColor: "bg-red-500/20",
       icon: <FaUserClock />
     },
     {
@@ -168,13 +183,13 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Expiring Memberships Card */}
-            <div className="bg-white/10 p-6 rounded-xl shadow-lg border border-white/10 hover:bg-red-900/30 transition-all duration-300 cursor-pointer" onClick={() => navigate('/expiring-memberships')}>
+            {/* Expired Memberships Card */}
+            <div className="bg-white/10 p-6 rounded-xl shadow-lg border border-white/10 hover:bg-red-900/30 transition-all duration-300 cursor-pointer" onClick={() => navigate('/expired-memberships')}>
               <div className="flex flex-col items-center">
                 <FaBell className="text-4xl text-red-400 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Expiring Memberships</h3>
-                <p className="text-3xl font-bold text-red-400">{loading ? '...' : stats.expiringMemberships}</p>
-                <p className="text-sm text-gray-400 mt-2">Next 7 Days</p>
+                <h3 className="text-xl font-semibold mb-2">Expired Memberships</h3>
+                <p className="text-3xl font-bold text-red-400">{loading ? '...' : stats.expiredMembers}</p>
+                <p className="text-sm text-gray-400 mt-2">Need Renewal</p>
               </div>
             </div>
           </div>
@@ -197,11 +212,26 @@ const Dashboard = () => {
                   <h4 className="font-semibold text-white">{status.status}</h4>
                   <p className="text-sm text-gray-400 mt-1">
                     {status.status === "Active" && "Members with valid memberships"}
-                    {status.status === "Expiring Soon" && "Memberships expiring in 7 days"}
+                    {status.status === "Expired" && "Members with expired memberships"}
                     {status.status === "New This Month" && "New registrations this month"}
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Analytics Section */}
+          <div className="mt-8">
+            <div className="flex items-center mb-6">
+              <FaChartPie className="text-2xl text-purple-400 mr-3" />
+              <h2 className="text-2xl font-semibold">Analytics & Insights</h2>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <MembershipDistribution />
+              <MembershipStatus />
+              <div className="lg:col-span-2">
+                <RevenueChart />
+              </div>
             </div>
           </div>
         </div>

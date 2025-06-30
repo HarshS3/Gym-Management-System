@@ -4,6 +4,8 @@ import gymBg from "../assets/gym-bg.jpg";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { config } from "../config/config.js";
+
 const Register = () => {
 
   const [registerFields,setRegisterFields] = useState({
@@ -103,7 +105,7 @@ const Register = () => {
     }
     
     try{
-      const response = await axios.post("http://localhost:5000/auth/register",registerFields);
+      const response = await axios.post(`${config.apiUrl}/auth/register`, registerFields);
       if(response.data.success){
         // console.log(response);
         toast.success("Registration successful");

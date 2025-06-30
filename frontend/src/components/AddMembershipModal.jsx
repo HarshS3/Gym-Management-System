@@ -2,6 +2,7 @@ import React, { useState,useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { config } from '../config/config.js';
 
 const AddMembershipModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
@@ -10,12 +11,11 @@ const AddMembershipModal = ({ isOpen, onClose }) => {
   });
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchMemberships = async () => {
     try {
       // console.log("AddMembershipModal: Fetching memberships...");
-      const response = await axios.get('http://localhost:5000/plans/get-membership', {
+      const response = await axios.get(`${config.apiUrl}/plans/get-membership`, {
         withCredentials: true
       });
       // console.log("AddMembershipModal: Membership response:", response.data);
@@ -54,7 +54,7 @@ const AddMembershipModal = ({ isOpen, onClose }) => {
       // console.log("Adding membership:", formData);
       
       const response = await axios.post(
-        'http://localhost:5000/plans/add-membership',
+        `${config.apiUrl}/plans/add-membership`,
         formData,
         { withCredentials: true }
       );
@@ -73,7 +73,7 @@ const AddMembershipModal = ({ isOpen, onClose }) => {
       console.error('Error adding membership:', error);
       toast.error('Error adding membership plan');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 

@@ -3,6 +3,7 @@ import InfoListPage from '../components/InfoListPage';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { config } from '../config/config.js';
 
 const ExpiringMemberships = () => {
   const [members, setMembers] = useState([]);
@@ -17,7 +18,7 @@ const ExpiringMemberships = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get('http://localhost:5000/members/expiring-in-week', {
+      const response = await axios.get(`${config.apiUrl}/members/expiring-in-week`, {
         withCredentials: true
       });
       

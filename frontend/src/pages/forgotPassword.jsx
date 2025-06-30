@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Loader from "../components/Loader";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { config } from "../config/config.js";
 
 const ForgotPassword = () => {
   const [emailSubmit, setEmailSubmit] = useState(false);
@@ -26,7 +27,7 @@ const ForgotPassword = () => {
 const sendOtp = async () => {
   setIsLoading(true);
   try{
-    const response = await axios.post("http://localhost:5000/auth/forgot-password/send-otp",forgotPasswordFields);
+    const response = await axios.post(`${config.apiUrl}/auth/forgot-password/send-otp`,forgotPasswordFields);
     setEmailSubmit(true);
     setContentVal("Verify OTP");
     toast.success(response.data.message);
@@ -41,7 +42,7 @@ const sendOtp = async () => {
 const verifyOtp = async () => {
   setIsLoading(true);
   try{
-    const response = await axios.post("http://localhost:5000/auth/forgot-password/verify-otp",forgotPasswordFields);
+    const response = await axios.post(`${config.apiUrl}/auth/forgot-password/verify-otp`,forgotPasswordFields);
     setOtpValidation(true);
     setContentVal("Reset Password");
     toast.success(response.data.message);
@@ -56,7 +57,7 @@ const verifyOtp = async () => {
 const resetPassword = async () => {
   setIsLoading(true);
   try{
-    const response = await axios.post("http://localhost:5000/auth/forgot-password/reset-password",forgotPasswordFields);
+    const response = await axios.post(`${config.apiUrl}/auth/forgot-password/reset-password`,forgotPasswordFields);
     toast.success(response.data.message);
     navigate("/login");
     setIsLoading(false);

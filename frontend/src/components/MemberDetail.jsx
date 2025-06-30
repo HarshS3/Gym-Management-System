@@ -3,6 +3,8 @@ import Sidebar from './sidebar.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { config } from '../config/config.js';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const availableMemberships = [
   { id: '1', name: 'Basic Plan', months: 1, price: 1000 },
@@ -81,6 +83,66 @@ const MemberDetail = () => {
     }
   };
 
+  // Generate PDF of member details
+  const exportToPDF = () => {
+    if (!member) return;
+
+    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+
+    // Title
+    doc.setFontSize(22);
+    doc.text(`${member.name}'s Profile`, 40, 40);
+
+    // Basic Info table
+    autoTable(doc, {
+      startY: 60,
+      head: [['Field', 'Value']],
+      body: [
+        ['Member ID', member._id],
+        ['Email', member.email],
+        ['Phone', member.phone],
+        ['Gender', member.gender],
+        ['Age', member.age],
+        ['Address', member.address],
+        ['Status', memberStatus],
+        ['Membership', member.membership ? `${member.membership.months} month(s)` : 'N/A'],
+        ['Next Bill Date', member.nextBillDate ? new Date(member.nextBillDate).toLocaleDateString() : 'N/A'],
+      ],
+      theme: 'grid',
+      styles: { halign: 'left' },
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    // Health Metrics
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 20,
+      head: [['Health Metric', 'Value']],
+      body: [
+        ['Height', `${member.height} cm`],
+        ['Weight', `${member.weight} kg`],
+        ['BMI', member.bmi],
+        ['Body Fat', member.bodyFat ? `${member.bodyFat}%` : 'N/A'],
+        ['Muscle Mass', member.muscleMass ? `${member.muscleMass} kg` : 'N/A'],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [39, 174, 96] },
+    });
+
+    // Body Measurements table
+    const bm = member.bodyMeasurements || {};
+    const bmRows = Object.entries(bm).map(([k, v]) => [k.charAt(0).toUpperCase() + k.slice(1), v ? `${v} cm` : 'N/A']);
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 20,
+      head: [['Body Measurement', 'Value']],
+      body: bmRows,
+      theme: 'grid',
+      headStyles: { fillColor: [142, 68, 173] },
+    });
+
+    doc.save(`${member.name.replace(/\s+/g, '_')}_profile.pdf`);
+  };
+
   if (loading) return <div className="text-white p-10">Loading...</div>;
   if (error) return <div className="text-red-400 p-10">Error: {error}</div>;
   if (!member) return <div className="text-white p-10">No member found.</div>;
@@ -106,12 +168,20 @@ const MemberDetail = () => {
       <Sidebar />
       <div className="flex bg-gradient-to-br from-black via-gray-900 to-gray-800">
         <div className="ml-64 w-full min-h-screen p-10 text-white overflow-y-auto flex flex-col items-center justify-center">
-          <button
-            className="mb-8 px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-all self-start"
-            onClick={() => navigate('/members')}
-          >
-            ← Back to Members
-          </button>
+          <div className="flex w-full max-w-xl justify-between mb-8">
+            <button
+              className="px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-all"
+              onClick={() => navigate('/members')}
+            >
+              ← Back to Members
+            </button>
+            <button
+              className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-all"
+              onClick={exportToPDF}
+            >
+              Export PDF
+            </button>
+          </div>
           <div className="bg-white/10 rounded-2xl shadow-lg border border-blue-500/30 p-10 w-full max-w-xl flex flex-col items-center">
             <div className="mb-4 text-blue-400 font-bold text-lg">Member ID: {member._id}</div>
             {member.profileImage ? (

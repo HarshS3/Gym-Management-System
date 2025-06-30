@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Members from './pages/Members.jsx';
 import NewRegistrations from './pages/newRegistrations.jsx';
 import ExpiringMemberships from './pages/expiringMemberships.jsx';
+import ExpiredMemberships from './pages/expiredMemberships.jsx';
 import MemberDetail from './components/MemberDetail.jsx';
 import Equipment from './pages/Equipment.jsx';
 import Settings from './pages/Settings.jsx';
@@ -15,6 +16,7 @@ import { Toaster } from 'react-hot-toast';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { config } from './config/config.js';
+
 function App() {
     
   const [isLogin, setIsLogin] = useState(false);
@@ -85,6 +87,7 @@ function App() {
           <Route path="/members" element={<Members />} />
           <Route path="/new-registrations" element={<NewRegistrations />} />
           <Route path="/expiring-memberships" element={<ExpiringMemberships />} />
+          <Route path="/expired-memberships" element={<ExpiredMemberships />} />
           <Route path="/members/:id" element={<MemberDetail />} />
           <Route path="/equipment" element={<Equipment />} />
           <Route path="/settings" element={<Settings />} />

@@ -4,6 +4,8 @@ import gymBg from "../assets/gym-bg.jpg";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { config } from "../config/config.js";
+
 const Login = () => {
   const navigate = useNavigate();
   const [loginFields,setLoginFields] = useState({
@@ -16,7 +18,7 @@ const Login = () => {
   const handleLogin = async (e)=>{
     e.preventDefault();
     try{
-      const response = await axios.post("http://localhost:5000/auth/login",loginFields,{withCredentials:true});
+      const response = await axios.post(`${config.apiUrl}/auth/login`, loginFields, { withCredentials: true });
       if(response.data.success){
         // console.log(response.data);
         localStorage.setItem("gymName",response.data.gym.gymName);

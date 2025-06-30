@@ -9,6 +9,7 @@ import {
   FaSignOutAlt
 } from "react-icons/fa";
 import axios from "axios";
+import { config } from "../config/config.js";
 
 const Sidebar = () => {
   const location = useLocation();
@@ -30,7 +31,7 @@ const Sidebar = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post("http://localhost:5000/auth/logout", {}, {withCredentials: true});
+      await axios.post(`${config.apiUrl}/auth/logout`, {}, { withCredentials: true });
       localStorage.removeItem('isLoggedIn');
       localStorage.removeItem('gymName');
       // Dispatch custom event to notify App.js about the logout state change
