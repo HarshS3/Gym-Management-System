@@ -6,12 +6,7 @@ import { config } from '../config/config.js';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const availableMemberships = [
-  { id: '1', name: 'Basic Plan', months: 1, price: 1000 },
-  { id: '2', name: 'Premium Plan', months: 3, price: 2500 },
-  { id: '3', name: 'Gold Plan', months: 6, price: 4500 },
-  { id: '4', name: 'Platinum Plan', months: 12, price: 8000 },
-];
+// Membership plans will be fetched from backend
 
 const MemberDetail = () => {
   const navigate = useNavigate();
@@ -22,6 +17,7 @@ const MemberDetail = () => {
   const [memberStatus, setMemberStatus] = useState('');
   const [selectedMembership, setSelectedMembership] = useState('');
   const [isRenewing, setIsRenewing] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState([]);
 
   // Fetch member details
   useEffect(() => {
@@ -44,6 +40,21 @@ const MemberDetail = () => {
     };
     fetchMember();
   }, [id]);
+
+  // fetch membership plans
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const res = await axios.get(`${config.apiUrl}/plans/get-membership`, { withCredentials: true });
+        if (res.data.success) {
+          setAvailablePlans(res.data.membership || []);
+        }
+      } catch (err) {
+        console.error('Failed to load membership plans', err);
+      }
+    };
+    fetchPlans();
+  }, []);
 
   // Handle status toggle
   const handleStatusToggle = async () => {
@@ -68,6 +79,10 @@ const MemberDetail = () => {
     setIsRenewing(true);
     try {
       await axios.put(`${config.apiUrl}/members/renew-membership/${id}`, { membershipId: selectedMembership }, { withCredentials: true });
+
+      // Optimistically mark as Active
+      setMemberStatus('Active');
+
       // Refetch member details after renewal
       const response = await axios.get(`${config.apiUrl}/members/member-detail/${id}`, { withCredentials: true });
       if (response.data.success) {
@@ -246,9 +261,9 @@ const MemberDetail = () => {
                     className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-yellow-500 text-white [&>option]:bg-gray-800 [&>option]:text-white [&>option]:hover:bg-gray-700 [&>option]:focus:bg-blue-600"
                   >
                     <option value="">Choose a plan...</option>
-                    {availableMemberships.map((membership) => (
-                      <option key={membership.id} value={membership.id}>
-                        {membership.name} - {membership.months} month(s) - ₹{membership.price}
+                    {availablePlans.map((membership) => (
+                      <option key={membership._id} value={membership._id}>
+                        {membership.months} month(s) - ₹{membership.price}
                       </option>
                     ))}
                   </select>

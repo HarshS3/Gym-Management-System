@@ -52,12 +52,25 @@ const RevenueChart = () => {
                 const data = response.data.data;
                 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 
+                // Build last 6 months timeline
+                const timeline = [];
+                const today = new Date();
+                for (let i = 5; i >= 0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                    timeline.push({ month: d.getMonth()+1, year: d.getFullYear() });
+                }
+
+                const values = timeline.map(({month,year}) => {
+                    const rec = data.find(r => r.month === month && r.year === year);
+                    return rec ? rec.totalRevenue : 0;
+                });
+
                 setChartData(prev => ({
                     ...prev,
-                    labels: data.map(item => `${months[item.month - 1]} ${item.year}`),
+                    labels: timeline.map(t => `${months[t.month - 1]} ${t.year}`),
                     datasets: [{
                         ...prev.datasets[0],
-                        data: data.map(item => item.totalRevenue)
+                        data: values
                     }]
                 }));
             }

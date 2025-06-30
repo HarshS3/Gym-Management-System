@@ -21,4 +21,4 @@ dotenv.config();
   } finally {
     process.exit();
   }
-})(); 
+})();

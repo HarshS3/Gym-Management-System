@@ -60,20 +60,36 @@ const Dashboard = () => {
         withCredentials: true
       });
 
-      // Get active members count
+      // Get active and inactive members count based on status field
       const activeCount = statusResponse.data.data.find(item => item.status === 'Active')?.count || 0;
+      const inactiveCount = statusResponse.data.data.find(item => item.status === 'Inactive')?.count || 0;
 
-      // Fetch all memberships to calculate revenue
+      // ---------------------------------------------------------------------
+      // Fetch monthly revenue from backend analytics to align with chart data
+      // ---------------------------------------------------------------------
+      const revenueResponse = await axios.get(`${config.apiUrl}/analytics/monthly-revenue`, {
+        withCredentials: true
+      });
+      let backendMonthRevenue = 0;
+      if (revenueResponse.data.success) {
+        const revenueArray = revenueResponse.data.data || [];
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1; // JS months are 0-indexed; backend uses 1-12
+        const currentYear = now.getFullYear();
+        const currentRecord = revenueArray.find(r => r.month === currentMonth && r.year === currentYear);
+        backendMonthRevenue = currentRecord?.totalRevenue || 0;
+      }
+
+      // Fetch all memberships to calculate revenue from new registrations (fallback)
       const membershipsResponse = await axios.get(`${config.apiUrl}/plans/get-membership`, {
         withCredentials: true
       });
 
-      // Calculate dynamic revenue
+      // Calculate revenue from new registrations (used if backend revenue is 0)
       let calculatedRevenue = 0;
       if (newRegistrationsResponse.data.success && membershipsResponse.data.membership) {
         const newMembers = newRegistrationsResponse.data.monthlyMembers || [];
         const memberships = membershipsResponse.data.membership;
-        
         newMembers.forEach(member => {
           const membership = memberships.find(m => m._id === member.membership?._id);
           if (membership) {
@@ -82,14 +98,16 @@ const Dashboard = () => {
         });
       }
 
+      const finalMonthlyRevenue = backendMonthRevenue || calculatedRevenue;
+
       setStats({
         totalMembers: totalMembersResponse.data.totalMembers || 0,
         activeMembers: activeCount,
         newRegistrations: newRegistrationsResponse.data.monthlyMembersCount || 0,
-        expiredMembers: expiredMembersResponse.data.expiredMembersCount || 0,
+        expiredMembers: expiredMembersResponse.data.expiredMembersCount ?? inactiveCount,
         activeEquipment: 37, // Static for now
         todayAttendance: 58, // Static for now
-        monthlyRevenue: calculatedRevenue
+        monthlyRevenue: finalMonthlyRevenue
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -147,7 +165,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="bg-white/10 p-6 rounded-xl shadow-lg border border-white/10 hover:bg-white/20 transition-all duration-300">
+            <div className="bg-white/10 p-6 rounded-xl shadow-lg border border-white/10 hover:bg-white/20 transition-all duration-300 cursor-pointer" onClick={() => navigate('/equipment')}>
               <div className="flex flex-col items-center">
                 <FaDumbbell className="text-4xl text-green-400 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Active Equipment</h3>
@@ -175,7 +193,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="bg-white/10 p-6 rounded-xl shadow-lg border border-white/10 hover:bg-white/20 transition-all duration-300">
+            <div className="bg-white/10 p-6 rounded-xl shadow-lg border border-white/10 hover:bg-white/20 transition-all duration-300 cursor-pointer" onClick={() => navigate('/revenue')}>
               <div className="flex flex-col items-center">
                 <FaMoneyBillWave className="text-4xl text-green-300 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Revenue This Month</h3>

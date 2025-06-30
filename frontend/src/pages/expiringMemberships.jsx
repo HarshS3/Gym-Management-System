@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import InfoListPage from '../components/InfoListPage';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -10,11 +10,7 @@ const ExpiringMemberships = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchExpiringMemberships();
-  }, []);
-
-  const fetchExpiringMemberships = async () => {
+  const fetchExpiringMemberships = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -34,7 +30,11 @@ const ExpiringMemberships = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [config.apiUrl]);
+
+  useEffect(() => {
+    fetchExpiringMemberships();
+  }, [fetchExpiringMemberships]);
 
   // Calculate days left until expiration
   const getDaysLeft = (nextBillDate) => {

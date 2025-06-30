@@ -7,31 +7,31 @@ import { payWithRazorpay } from '../utils/payWithRazorpay';
 
 // Pristine form template (outside component so it's not recreated on every render)
 const emptyForm = {
-  name: '',
-  email: '',
-  phone: '',
-  dateOfBirth: '',
-  gender: '',
-  profileImage: '',
-  address: '',
+    name: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    profileImage: '',
+    address: '',
   emergencyContact: { name: '', phone: '', relationship: '' },
-  height: '',
-  weight: '',
-  bmi: '',
-  bodyFat: '',
-  muscleMass: '',
-  bodyMeasurements: {
+    height: '',
+    weight: '',
+    bmi: '',
+    bodyFat: '',
+    muscleMass: '',
+    bodyMeasurements: {
     chest: '', waist: '', hips: '', biceps: '', thighs: '', calves: '',
     wrist: '', neck: '', forearm: '', ankle: ''
-  },
-  workoutRoutine: {
+    },
+    workoutRoutine: {
     monday: 'Rest', tuesday: 'Rest', wednesday: 'Rest', thursday: 'Rest',
     friday: 'Rest', saturday: 'Rest', sunday: 'Rest'
-  },
+    },
   personalTrainer: { name: '', phone: '' },
-  notes: '',
-  membership: '',
-  nextBillDate: ''
+    notes: '',
+    membership: '',
+    nextBillDate: ''
 };
 
 const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
@@ -739,7 +739,7 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
                             member: memberPlaceholder,
                             membership: selectedMembershipDetails,
                             onSuccess: (razResp) => {
-                              setPaymentStatus('success');
+                          setPaymentStatus('success');
                               setPaymentInfo(razResp);
                               toast.success('Payment successful');
                             }

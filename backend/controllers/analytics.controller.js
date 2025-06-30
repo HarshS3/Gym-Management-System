@@ -1,5 +1,5 @@
 import Member from "../models/member.model.js";
-import Membership from "../models/membership.model.js";
+import Payment from "../models/payment.model.js";
 
 // Get membership plan distribution
 export const getMembershipDistribution = async (req, res) => {
@@ -50,39 +50,42 @@ export const getMembershipDistribution = async (req, res) => {
     }
 };
 
-// Get monthly revenue data
+// Get monthly revenue data based on Payment collection (last 6 months)
 export const getMonthlyRevenue = async (req, res) => {
     try {
-        // Get data for the last 6 months
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        sixMonthsAgo.setDate(1); // Start of month
+        sixMonthsAgo.setDate(1);
 
-        const revenueData = await Member.aggregate([
+        const revenueData = await Payment.aggregate([
             {
                 $match: {
-                    gym: req.gym._id,
-                    lastPayment: { $gte: sixMonthsAgo }
+                    createdAt: { $gte: sixMonthsAgo },
+                    // Filter payments made by members belonging to this gym
                 }
             },
+            // Lookup member to get gym id
             {
                 $lookup: {
-                    from: "memberships",
-                    localField: "membership",
+                    from: "members",
+                    localField: "member",
                     foreignField: "_id",
-                    as: "membershipDetails"
+                    as: "memberDetails"
                 }
             },
+            { $unwind: "$memberDetails" },
             {
-                $unwind: "$membershipDetails"
+                $match: {
+                    "memberDetails.gym": req.gym._id
+                }
             },
             {
                 $group: {
                     _id: {
-                        month: { $month: "$lastPayment" },
-                        year: { $year: "$lastPayment" }
+                        month: { $month: "$createdAt" },
+                        year: { $year: "$createdAt" }
                     },
-                    totalRevenue: { $sum: "$membershipDetails.price" }
+                    totalRevenue: { $sum: "$amount" }
                 }
             },
             {
@@ -94,23 +97,14 @@ export const getMonthlyRevenue = async (req, res) => {
                 }
             },
             {
-                $sort: {
-                    year: 1,
-                    month: 1
-                }
+                $sort: { year: 1, month: 1 }
             }
         ]);
 
-        res.status(200).json({
-            success: true,
-            data: revenueData
-        });
+        res.status(200).json({ success: true, data: revenueData });
     } catch (error) {
         console.error("Error in getMonthlyRevenue:", error);
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
