@@ -182,7 +182,7 @@ export const registerMember=async(req,res)=>{
               membership,
               orderId: 'CASH-' + Date.now(),
               paymentId: 'CASH',
-              amount: membershipDetails.price * 100,
+              amount: membershipDetails.price,
               currency: 'INR',
               method: 'cash',
               status: 'received',
@@ -298,15 +298,34 @@ export const searchedMembers=async(req,res)=>{
 
 export const monthlyMembers=async(req,res)=>{
     try{
-        const now = new Date();
-        // getMonth gives index that for month 12 it gives 0
-        const lastDayOfPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0); // last date of previous month
-        const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999); // last date of current month
+        let { month } = req.query; // expected format YYYY-MM
+
+        let startDate, endDate;
+
+        if (month) {
+            // Parse year and month
+            const [yearStr, monthStr] = month.split('-');
+            const year = parseInt(yearStr, 10);
+            const monthIndex = parseInt(monthStr, 10) - 1; // JS Date month is 0-based
+
+            if (!isNaN(year) && !isNaN(monthIndex) && monthIndex >= 0 && monthIndex <= 11) {
+                startDate = new Date(year, monthIndex, 1);
+                endDate = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
+            }
+        }
+
+        if (!startDate || !endDate) {
+            // Fallback to current month if invalid or not provided
+            const now = new Date();
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        }
+
         const monthlyMembers = await Member.find({
             gym:req.gym._id,
             joinDate:{
-                $gte:lastDayOfPreviousMonth,
-                $lte:endOfCurrentMonth
+                $gte:startDate,
+                $lte:endDate
             }
         }).populate('membership', 'name months price').sort({joinDate:-1})  
         res.status(200).json({
@@ -353,7 +372,6 @@ export const expiringInSevenDays=async(req,res)=>{
 export const expiredMembers=async(req,res)=>{
     try{
         const today = new Date();
-        // First get all expired members
         const expiredMembers = await Member.find({
             gym: req.gym._id,
             nextBillDate: { $lt: today }
@@ -376,7 +394,8 @@ export const expiredMembers=async(req,res)=>{
             success: true,
             message: totalExpiredMembers > 0 ? "Expired members fetched successfully" : "No Expired Members found",
             members: paginatedExpiredMembers,
-            totalMembers: totalExpiredMembers
+            totalMembers: totalExpiredMembers,
+            expiredMembersCount: totalExpiredMembers
         });
     } catch(error) {
         console.error("Error in expiredMembers:", error);
@@ -482,9 +501,10 @@ export const renewMembership=async(req,res)=>{
                 message:"Member not found"
             })
         }
-        member.membership=membershipId;
-        member.nextBillDate=nextBillDate;
-        member.lastPayment=today;
+        member.membership = membershipId;
+        member.nextBillDate = nextBillDate;
+        member.lastPayment = today;
+        member.status = "Active";
         await member.save();
         res.status(200).json({
             success:true,

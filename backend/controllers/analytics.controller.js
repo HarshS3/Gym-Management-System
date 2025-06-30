@@ -24,13 +24,13 @@ export const getMembershipDistribution = async (req, res) => {
             },
             {
                 $group: {
-                    _id: "$membershipDetails.name",
+                    _id: "$membershipDetails.months",
                     count: { $sum: 1 }
                 }
             },
             {
                 $project: {
-                    planName: "$_id",
+                    planName: { $concat: [ { $toString: "$_id" }, " Month" ] },
                     count: 1,
                     _id: 0
                 }

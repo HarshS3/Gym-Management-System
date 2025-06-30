@@ -54,3 +54,33 @@ export const verifyPayment = async (req, res) => {
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 }
+
+export const getPayments = async (req, res) => {
+    try {
+        // Fetch all members for the current gym
+        const members = await (await import('../models/member.model.js')).default.find({ gym: req.gym._id }).select('_id');
+        const memberIds = members.map(m => m._id);
+
+        const Payment = (await import('../models/payment.model.js')).default;
+
+        const { skip = 0, limit = 10 } = req.query;
+        const numericSkip = parseInt(skip);
+        const numericLimit = parseInt(limit);
+
+        const filter = { member: { $in: memberIds } };
+
+        const total = await Payment.countDocuments(filter);
+
+        const payments = await Payment.find(filter)
+            .populate({ path: 'member', select: 'name' })
+            .populate({ path: 'membership', select: 'name months price' })
+            .sort({ createdAt: -1 })
+            .skip(numericSkip)
+            .limit(numericLimit);
+
+        res.status(200).json({ success: true, payments, total });
+    } catch (error) {
+        console.error('Error fetching payments:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
