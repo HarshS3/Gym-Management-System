@@ -1,20 +1,21 @@
 import axios from 'axios';
 import Razorpay from 'razorpay';
 
-const razorpayInstance = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
-
 export const createOrder = async (req, res) => {
     try {
+        const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } = process.env;
+        if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+            return res.status(500).json({ success:false, message: 'Razorpay keys not configured' });
+        }
+
+        const instance = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+
         const option = {
             amount: Number(req.body.amount * 100),
             currency: "INR",
             receipt:`receipt_${Date.now()}`,
-        }
-        const order = await razorpayInstance.orders.create(option);
+        };
+        const order = await instance.orders.create(option);
         res.status(200).json({
             success:true,
             order
