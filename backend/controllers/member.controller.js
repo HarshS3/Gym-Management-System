@@ -1,6 +1,11 @@
 import { addMonthsToDate } from "../utils/date.utils.js";
 import Member from "../models/member.model.js";
 import Membership from "../models/membership.model.js";
+import nodemailer from "nodemailer";
+import { emailMemberJsPdf } from "../utils/memberPdf.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export const registerMember=async(req,res)=>{
     try {
@@ -122,6 +127,47 @@ export const registerMember=async(req,res)=>{
             nextBillDate: calculatedNextBillDate
         });
 
+        // Generate PDF and email it – do not block response if email fails
+        (async () => {
+          try {
+            const pdfBuffer = await emailMemberJsPdf(member);
+
+            if (pdfBuffer) {
+              const transporter = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 587,
+                secure: false, // use STARTTLS
+                auth: {
+                  user: process.env.EMAIL_USER,
+                  pass: process.env.EMAIL_PASS,
+                },
+                tls: {
+                  rejectUnauthorized: false,
+                },
+              });
+
+              await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: member.email,
+                subject: 'Your Gym Membership Details',
+                text: `Hi ${member.name},\n\nAttached is a PDF containing your membership and health details. Welcome to the gym!`,
+                attachments: [
+                  {
+                    filename: `${member.name.replace(/\s+/g, '_')}_profile.pdf`,
+                    content: pdfBuffer,
+                  },
+                ],
+              });
+
+              console.log(`📧 Member PDF email successfully sent to ${member.email}`);
+            } else {
+              console.warn(`PDF generation failed for member ${member.email}; skipping email.`);
+            }
+          } catch (emailErr) {
+            console.error('Failed to send member PDF email:', emailErr);
+          }
+        })();
+
         res.status(201).json({
             success:true,
             message:"Member registered successfully",
@@ -240,24 +286,38 @@ export const expiringInSevenDays=async(req,res)=>{
 
 export const expiredMembers=async(req,res)=>{
     try{
-        const today=new Date();
-        const expiredMembers=await Member.find({
-            gym:req.gym._id,
-            status:"Active",
-            nextBillDate:{$lt:today}
-        }).populate('membership', 'name months price').sort({nextBillDate:-1})
-        res.status(200).json({
-            success:true,
-            message:expiredMembers.length>0?"Expired members fetched successfully":"No Expired Members found",
-            expiredMembers,
-            expiredMembersCount:expiredMembers.length
+        const today = new Date();
+        // First get all expired members
+        const expiredMembers = await Member.find({
+            gym: req.gym._id,
+            nextBillDate: { $lt: today }
+        });
+
+        const totalExpiredMembers = expiredMembers.length;
+
+        // Then get paginated data
+        const { skip = 0, limit = 10 } = req.query;
+        const paginatedExpiredMembers = await Member.find({
+            gym: req.gym._id,
+            nextBillDate: { $lt: today }
         })
-    }catch(error){
+        .populate('membership', 'name months price')
+        .sort({ nextBillDate: -1 })
+        .skip(parseInt(skip))
+        .limit(parseInt(limit));
+
+        res.status(200).json({
+            success: true,
+            message: totalExpiredMembers > 0 ? "Expired members fetched successfully" : "No Expired Members found",
+            members: paginatedExpiredMembers,
+            totalMembers: totalExpiredMembers
+        });
+    } catch(error) {
         console.error("Error in expiredMembers:", error);
         res.status(500).json({
-            success:false,
-            message:error.message
-        })
+            success: false,
+            message: error.message
+        });
     }
 }
 

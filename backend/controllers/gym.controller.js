@@ -25,13 +25,13 @@ export const registerGym = async (req,res) => {
     }
 }
 
+const isProd = process.env.NODE_ENV === 'production';
 const cookieOptions = {
-    httpOnly:true,
-    secure:true,
-    sameSite:"lax",
-    maxAge:3600000
-}
-
+  httpOnly: true,
+  secure: isProd,              // only Secure in prod
+  sameSite: isProd ? 'lax' : 'strict', // strict is fine on localhost
+  maxAge: 3600000,
+};
 export const loginGym = async (req,res) => {
     try{
         const {email,password} = req.body;

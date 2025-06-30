@@ -8,6 +8,10 @@ import memberRoutes from "./routes/member.route.js";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import "./utils/emailCron.js";
+import analyticsRouter from "./routes/analytics.route.js";
+import paymentRoutes from "./routes/payment.route.js";
+import exportPdf  from "./utils/pdfExort.js";
 
 dotenv.config();
 
@@ -18,27 +22,29 @@ app.use(express.json());
 app.use(cookieParser());
 
 if(process.env.NODE_ENV === 'development'){
-app.use(cors({
-  origin: ["http://localhost:3000"],
-  credentials: true,
-}));
+  app.use(cors({
+    origin: ["http://localhost:3000"],
+    credentials: true,
+  }));
 }
+
 
 // API Routes
 app.use("/auth", gymRoutes);
 app.use("/plans", membershipRoutes);
 app.use("/members", memberRoutes);
+app.use("/analytics", analyticsRouter);
+app.use("/payment", paymentRoutes);
+app.get("/export-pdf", exportPdf);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.static(path.join(__dirname, '../frontend/build')));
 
-  
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
 });
-
 
 connectDB()
   .then(() => {
