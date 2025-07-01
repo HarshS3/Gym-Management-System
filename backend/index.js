@@ -13,6 +13,7 @@ import analyticsRouter from "./routes/analytics.route.js";
 import paymentRoutes from "./routes/payment.route.js";
 import exportPdf  from "./utils/pdfExort.js";
 import equipmentRoutes from "./routes/equipment.route.js";
+import aiRoutes from "./routes/ai.route.js";
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use("/members", memberRoutes);
 app.use("/analytics", analyticsRouter);
 app.use("/payment", paymentRoutes);
 app.use("/equipment", equipmentRoutes);
+app.use("/ai", aiRoutes);
 app.get("/export-pdf", exportPdf);
 
 const __filename = fileURLToPath(import.meta.url);

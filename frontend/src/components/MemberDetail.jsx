@@ -21,6 +21,9 @@ const MemberDetail = () => {
   const [isRenewing, setIsRenewing] = useState(false);
   const [availablePlans, setAvailablePlans] = useState([]);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [aiError, setAiError] = useState('');
 
   // Fetch member details
   useEffect(() => {
@@ -159,6 +162,36 @@ const MemberDetail = () => {
     });
 
     doc.save(`${member.name.replace(/\s+/g, '_')}_profile.pdf`);
+  };
+
+  const handleAiClick = () => {
+    setAiLoading(true);
+    setAiError('');
+    setAiSuggestions([]);
+    axios.post(`${config.apiUrl}/ai/suggestions`, { member }, { withCredentials: true })
+      .then(res => {
+        if (res.data.success && Array.isArray(res.data.suggestions)) {
+          setAiSuggestions(res.data.suggestions);
+        } else {
+          setAiError(res.data.message || 'Unexpected response');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        setAiError(err.response?.data?.message || 'Error fetching AI suggestions');
+      })
+      .finally(() => setAiLoading(false));
+  };
+
+  const categoryClasses = (cat) => {
+    switch (cat) {
+      case 'Nutrition':
+        return 'bg-orange-500/20 text-orange-300';
+      case 'Workout':
+        return 'bg-blue-500/20 text-blue-300';
+      default:
+        return 'bg-pink-500/20 text-pink-300';
+    }
   };
 
   if (loading) return <div className="text-white p-10">Loading...</div>;
@@ -419,6 +452,32 @@ const MemberDetail = () => {
               });
             }}
           />
+          {/* AI Suggestions button */}
+          <button
+            onClick={handleAiClick}
+            disabled={aiLoading}
+            className={`mt-8 px-4 py-3 rounded-lg font-semibold transition-all ${aiLoading ? 'bg-purple-400 cursor-wait' : 'bg-purple-600 hover:bg-purple-700' } text-white`}
+          >
+            {aiLoading ? 'Generating...' : 'Get AI Suggestions'}
+          </button>
+
+          {aiError && (
+            <div className="mt-4 text-red-400 max-w-xl">{aiError}</div>
+          )}
+
+          {aiSuggestions.length > 0 && (
+            <div className="mt-6 w-full max-w-xl space-y-4">
+              {aiSuggestions.map(({ category, tip }, i) => (
+                <div
+                  key={i}
+                  className="flex gap-3 p-4 rounded-xl border border-white/10 bg-gradient-to-r from-black/40 to-black/20 hover:bg-white/10 transition"
+                >
+                  <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold ${categoryClasses(category)}`}>{category}</span>
+                  <p className="text-gray-300 leading-relaxed flex-1">{tip}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
