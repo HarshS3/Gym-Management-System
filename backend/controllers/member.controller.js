@@ -234,6 +234,15 @@ export const registerMember=async(req,res)=>{
           }
         })();
 
+        // Notify face-recognition service to reload faces (non-blocking)
+        (async () => {
+          try {
+            await fetch('http://localhost:5001/refresh-faces', { method: 'POST' });
+          } catch (err) {
+            console.error('Failed to refresh faces on Face API:', err);
+          }
+        })();
+
         res.status(201).json({
             success:true,
             message:"Member registered successfully",
@@ -614,4 +623,65 @@ export const updateMember = async (req, res) => {
             message: error.message
         });
     }
+};
+
+export const markAttendance = async (req, res) => {
+  try {
+    const { id, name } = req.body;
+    let member = null;
+
+    if (id) {
+      member = await Member.findOne({ _id: id, gym: req.gym._id });
+    } else if (name) {
+      // Clean the name:
+      // 1. Remove timestamp suffix
+      // 2. Replace hyphens with spaces
+      // 3. Trim whitespace
+      // 4. Proper case (capitalize first letter of each word)
+      const cleanName = name
+        .replace(/-\d+$/, '') // Remove timestamp
+        .replace(/-/g, ' ')   // Replace hyphens with spaces
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      
+      // Try exact match first
+      member = await Member.findOne({
+        gym: req.gym._id,
+        name: cleanName
+      });
+
+      // If no exact match, try case-insensitive
+      if (!member) {
+        member = await Member.findOne({
+          gym: req.gym._id,
+          name: { $regex: new RegExp(`^${cleanName}$`, 'i') }
+        });
+      }
+    }
+
+    if (!member) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Member not found',
+        searchedName: name,
+        cleanedName: name ? name
+          .replace(/-\d+$/, '')
+          .replace(/-/g, ' ')
+          .trim()
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ') : null
+      });
+    }
+
+    member.lastVisit = new Date();
+    await member.save();
+
+    res.json({ success: true, memberId: member._id });
+  } catch (err) {
+    console.error('Error in markAttendance:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };

@@ -183,21 +183,42 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
     if (!file) return;
 
     setIsUploading(true);
-    const data = new FormData();
-    data.append("file", file);
-    data.append("upload_preset", "gym-management");
-  
+
     try {
-      const response = await axios.post("https://api.cloudinary.com/v1_1/di5d7yavn/image/upload", data);
-      const imageUrl = response.data.secure_url;
-  
+      const memberName = formData.name.trim();
+      const slug = memberName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      const publicId = `${slug}-${Date.now()}`;
+      const memberNameContext = `name=${memberName}`;
+      // 1. Get a signed upload signature from backend
+      const sigRes = await axios.get(`${config.apiUrl}/cloudinary/signature`, {
+        params: { folder: 'members', context: memberNameContext, public_id: publicId },
+        withCredentials: true,
+      });
+
+      const { timestamp, signature, apiKey, cloudName, folder, context, public_id } = sigRes.data;
+
+      // 2. Upload to Cloudinary with the signature
+      const data = new FormData();
+      data.append('file', file);
+      data.append('api_key', apiKey);
+      data.append('timestamp', timestamp);
+      data.append('signature', signature);
+      data.append('folder', folder);
+      // Send same context/public_id that were signed
+      if (context) data.append('context', context);
+      if (public_id) data.append('public_id', public_id);
+
+      const uploadRes = await axios.post(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, data);
+
+      const imageUrl = uploadRes.data.secure_url;
+
       setFormData(prev => ({
         ...prev,
-        profileImage: imageUrl
+        profileImage: imageUrl,
       }));
     } catch (error) {
-      console.error("Cloudinary upload failed:", error);
-      toast.error("Failed to upload image. Please try again.");
+      console.error('Cloudinary upload failed:', error);
+      toast.error('Failed to upload image. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -289,6 +310,12 @@ const AddMemberModal = ({ isOpen, onClose, onMemberAdded }) => {
 
       if (response.status === 201) {
         toast.success('Member added successfully!');
+        // Refresh face encodings so the new member can be recognized immediately
+        try {
+          await axios.post(`${config.faceApiUrl}/refresh-faces`);
+        } catch (refreshErr) {
+          console.warn('Face API refresh failed:', refreshErr.message);
+        }
         // Reset form data to initial state
         setFormData(emptyForm);
         onClose();

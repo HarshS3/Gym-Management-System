@@ -114,9 +114,8 @@ const memberSchema = new mongoose.Schema({
         default: Date.now
     },
     lastVisit:{
-        type:Date,
-        required:true,
-        default: Date.now
+        type: Date,
+        default: null  // will be set when the member actually checks in
     },
     gym:{
         type:mongoose.Schema.Types.ObjectId,

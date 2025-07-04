@@ -37,14 +37,32 @@ const Register = () => {
     if (!file) return;
 
     setIsUploading(true);
-    const data = new FormData();
-    data.append("file", file);
-    data.append("upload_preset", "gym-management");
-  
     try {
-      const response = await axios.post("https://api.cloudinary.com/v1_1/di5d7yavn/image/upload", data);
-      const imageUrl = response.data.secure_url;
-  
+      const username = registerFields.username.trim();
+      const slug = username.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      const publicId = `${slug}-${Date.now()}`;
+      const memberNameContext = `name=${username}`;
+      // 1. Request signed signature from backend
+      const sigRes = await axios.get(`${config.apiUrl}/cloudinary/signature`, {
+        params: { folder: 'members', context: memberNameContext, public_id: publicId },
+      });
+
+      const { timestamp, signature, apiKey, cloudName, folder, context, public_id } = sigRes.data;
+
+      // 2. Upload with signature
+      const data = new FormData();
+      data.append('file', file);
+      data.append('api_key', apiKey);
+      data.append('timestamp', timestamp);
+      data.append('signature', signature);
+      data.append('folder', folder);
+      if (context) data.append('context', context);
+      if (public_id) data.append('public_id', public_id);
+
+      const uploadRes = await axios.post(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, data);
+
+      const imageUrl = uploadRes.data.secure_url;
+
       setRegisterFields(prev => ({
         ...prev,
         profileImage: imageUrl

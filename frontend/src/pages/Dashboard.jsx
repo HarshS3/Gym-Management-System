@@ -107,13 +107,28 @@ const Dashboard = () => {
 
       const finalMonthlyRevenue = backendMonthRevenue || calculatedRevenue;
 
+      // Get today attendance count by fetching all members
+      const allMembersResp = await axios.get(`${config.apiUrl}/members/get-all-members?skip=0&limit=1000`, { withCredentials: true });
+      let todayAttendanceCount = 0;
+      if (allMembersResp.data.success) {
+        const allMembers = allMembersResp.data.members || [];
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        todayAttendanceCount = allMembers.filter(m => {
+          if (!m.lastVisit) return false;
+          const visit = new Date(m.lastVisit);
+          visit.setHours(0,0,0,0);
+          return visit.getTime() === today.getTime();
+        }).length;
+      }
+
       setStats({
         totalMembers: totalMembersResponse.data.totalMembers || 0,
         activeMembers: activeCount,
         newRegistrations: newRegistrationsResponse.data.monthlyMembersCount || 0,
         expiredMembers: expiredMembersResponse.data.expiredMembersCount ?? inactiveCount,
         activeEquipment: activeEquipCount,
-        todayAttendance: 58, // Static for now
+        todayAttendance: todayAttendanceCount,
         monthlyRevenue: finalMonthlyRevenue
       });
     } catch (error) {
@@ -181,7 +196,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="bg-white/10 p-6 rounded-xl shadow-lg border border-white/10 hover:bg-white/20 transition-all duration-300">
+            <div className="bg-white/10 p-6 rounded-xl shadow-lg border border-white/10 hover:bg-white/20 transition-all duration-300 cursor-pointer" onClick={() => navigate('/attendance')}>
               <div className="flex flex-col items-center">
                 <FaCalendarCheck className="text-4xl text-yellow-400 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Today's Attendance</h3>

@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { config } from './config/config.js';
 import Revenue from './pages/Revenue.jsx';
+import Attendance from './pages/Attendance.jsx';
 
 function App() {
     
@@ -93,6 +94,7 @@ function App() {
           <Route path="/equipment" element={<Equipment />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/revenue" element={<Revenue />} />
+          <Route path="/attendance" element={<Attendance />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       ) : (
