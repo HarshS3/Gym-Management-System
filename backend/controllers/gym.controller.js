@@ -81,7 +81,7 @@ const cookieOptions = {
   sameSite: isProd ? 'lax' : 'strict', // strict is fine on localhost
   maxAge: 3600000,
 };
-// Prepare options for clearing the auth cookie without the deprecated `maxAge` field
+ // Prepare options for clearing the auth cookie without the deprecated `maxAge` field
 const clearCookieOptions = { ...cookieOptions };
 delete clearCookieOptions.maxAge;
 export const loginGym = async (req,res) => {
