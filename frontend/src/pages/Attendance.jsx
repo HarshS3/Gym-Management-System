@@ -22,9 +22,10 @@ const Attendance = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Camera state placeholders
+  // Camera state
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [recognizedMember, setRecognizedMember] = useState(null);
+  const [capturing, setCapturing] = useState(false);
 
   useEffect(() => {
     fetchTodayAttendance();
@@ -127,7 +128,8 @@ const Attendance = () => {
             {/* Camera preview placeholder */}
             <div className="flex-1 flex items-center justify-center rounded-lg">
               {isCameraOn ? (
-                <FaceCapture onCapture={async (img) => {
+                <FaceCapture capturing={capturing} onCapture={async (img) => {
+                  setCapturing(true);
                   try {
                     const response = await axios.post(`${config.faceApiUrl}/recognize-face`, {
                       image: img, // base64 encoded image
@@ -177,6 +179,8 @@ const Attendance = () => {
                   } catch (err) {
                     console.error(err);
                     toast.error('Failed to send image');
+                  } finally {
+                    setCapturing(false);
                   }
                 }} />
                 

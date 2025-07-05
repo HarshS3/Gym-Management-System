@@ -14,7 +14,7 @@ const videoConstraints = {
  *
  * @param {Function} onCapture - callback(imageSrc: string)
  */
-const FaceCapture = ({ onCapture }) => {
+const FaceCapture = ({ onCapture, capturing = false }) => {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -75,9 +75,17 @@ const FaceCapture = ({ onCapture }) => {
 
   return (
     <div className="relative">
-      {!modelsLoaded && (
+      {/* Overlay when loading models or capturing */}
+      {( !modelsLoaded || capturing ) && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20 rounded-lg">
-          <span className="text-white text-sm">Loading face detector...</span>
+          {(!modelsLoaded) ? (
+            <span className="text-white text-sm">Loading face detector...</span>
+          ) : (
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+              <span className="text-white text-xs mt-2">Processing...</span>
+            </div>
+          )}
         </div>
       )}
       <Webcam
@@ -96,9 +104,10 @@ const FaceCapture = ({ onCapture }) => {
       <div className="flex justify-center mt-4">
         <button
           onClick={capture}
-          className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg text-white font-semibold shadow"
+          disabled={capturing || !modelsLoaded}
+          className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 rounded-lg text-white font-semibold shadow"
         >
-          Capture Face
+          {capturing ? 'Capturing...' : 'Capture Face'}
         </button>
       </div>
     </div>

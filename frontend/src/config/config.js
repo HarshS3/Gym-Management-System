@@ -7,7 +7,8 @@ const getApiUrl = () => {
 
 const getFaceApiUrl = () => {
   if (process.env.NODE_ENV === 'production') {
-    return process.env.REACT_APP_FACE_API_URL || '';
+    // In production, use backend proxy route
+    return '/face-api';
   }
   return process.env.REACT_APP_FACE_API_URL || 'http://localhost:5001';
 };

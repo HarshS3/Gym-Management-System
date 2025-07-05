@@ -15,22 +15,39 @@ import exportPdf  from "./utils/pdfExort.js";
 import equipmentRoutes from "./routes/equipment.route.js";
 import aiRoutes from "./routes/ai.route.js";
 import cloudinaryRoutes from "./routes/cloudinary.route.js";
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(express.json());
+// Proxy for Python Face API – must be registered BEFORE body parsers so the
+// raw request stream reaches the proxy intact (otherwise express.json would
+// consume it and the proxied request body would be empty).
+app.use(
+  '/face-api',
+  createProxyMiddleware({
+    target: process.env.FACE_API_URL || 'http://127.0.0.1:5001',
+    changeOrigin: true,
+    pathRewrite: { '^/face-api': '' },
+    timeout: 5 * 60 * 1000,
+    proxyTimeout: 5 * 60 * 1000,
+    onError: (err, req, res) => {
+      console.error('Face API proxy error:', err.message);
+      res.status(500).json({ success: false, message: 'Face API service unavailable' });
+    },
+  })
+);
+
+// JSON parser & cookies for other API routes
+app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 
-if(process.env.NODE_ENV === 'development'){
-  app.use(cors({
-    origin: ["http://localhost:3000"],
-    credentials: true,
-  }));
-}
-
+app.use(cors({
+  origin: ["http://localhost:3000", "http://localhost:5000"],
+  credentials: true,
+}));
 
 // API Routes
 app.use("/auth", gymRoutes);

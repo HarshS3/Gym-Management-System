@@ -16,7 +16,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
+if(os.getenv('NODE_ENV') == 'production'):
+    CORS(app, resources={r"/*": {"origins": "http://localhost:5000"}}, supports_credentials=True)
+else:
+    CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
 
 # Cloudinary configuration
 cloudinary.config(
@@ -71,8 +74,12 @@ def recognize_face():
         if not base64_img:
             return jsonify({'success': False, 'message': 'No image provided'}), 400
 
-        # Convert base64 string to image
-        img_data = base64.b64decode(base64_img.split(',')[1])
+        # Convert base64 string to image (handle both data URL and raw base64)
+        if ',' in base64_img:
+            base64_payload = base64_img.split(',')[1]
+        else:
+            base64_payload = base64_img
+        img_data = base64.b64decode(base64_payload)
         img = Image.open(BytesIO(img_data))
         img_array = np.array(img)
 

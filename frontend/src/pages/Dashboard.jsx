@@ -183,7 +183,6 @@ const Dashboard = () => {
                 <FaUsers className="text-4xl text-blue-400 mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Total Members</h3>
                 <p className="text-3xl font-bold text-blue-400">{loading ? '...' : stats.totalMembers}</p>
-                <p className="text-sm text-gray-400 mt-2">↑ 8% this month</p>
               </div>
             </div>
 
