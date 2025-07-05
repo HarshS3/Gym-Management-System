@@ -5,7 +5,8 @@ const gymSchema = new mongoose.Schema({
         type:String,
         required:true,
         trim: true,
-        lowercase: true
+        lowercase: true,
+        unique:true
     },
     username:{
         type:String,
@@ -40,6 +41,10 @@ const gymSchema = new mongoose.Schema({
     resetPasswordExpiresOtp:{
         type:Date,
         default:null
+    },
+    isEmailVerified:{
+        type:Boolean,
+        default:false
     }
 },{timestamps:true})
 

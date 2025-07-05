@@ -3,6 +3,7 @@ import Home from './pages/home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import ForgotPassword from './pages/forgotPassword.jsx';
+import VerifyEmail from './pages/VerifyEmail.jsx';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard.jsx';
 import Members from './pages/Members.jsx';
@@ -84,7 +85,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           <Route path="/register" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/forgot-password" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/members" element={<Members />} />
           <Route path="/new-registrations" element={<NewRegistrations />} />
@@ -103,6 +105,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       )}

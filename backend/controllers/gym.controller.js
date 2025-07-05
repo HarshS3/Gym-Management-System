@@ -7,19 +7,68 @@ import jwt from "jsonwebtoken";
 
 dotenv.config();
 
+// helper to generate & email OTP
+const generateAndSendOtp = async (gym, purpose='Account Verification') => {
+  const buffer = crypto.randomBytes(4);
+  const token = buffer.readUInt32BE(0) % 900000 + 100000; // 6-digit
+  gym.resetPasswordTokenOtp = token;
+  gym.resetPasswordExpiresOtp = Date.now() + 3600000; // 1hr
+  await gym.save();
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: gym.email,
+    subject: purpose,
+    text: `Your OTP is ${token}. It is valid for 1 hour.`
+  };
+
+  return new Promise((resolve,reject)=>{
+    transporter.sendMail(mailOptions,(error)=>{
+      if(error) return reject(error);
+      resolve(token);
+    });
+  });
+};
+
 export const registerGym = async (req,res) => {
     try{
         const {username,email,password,gymName,profileImage} = req.body;
 
-        const isExist = await Gym.findOne({username});
-        if(isExist){
-            res.status(400).json({message:"Gym already exists. Please try with different username"});
-        }else{
-            const hashedPassword = await bcrypt.hash(password,10);
-            const newGym = new Gym({username,email,password:hashedPassword,gymName,profileImage});
-            await newGym.save();
-            res.status(201).json({message:"Gym registered successfully",success:true});
+        // Check if either the username or email already exists
+        const existingGym = await Gym.findOne({ $or: [ { username }, { email } ] });
+
+        if(existingGym){
+            // Case 1: Account already verified – block registration
+            if(existingGym.isEmailVerified){
+                return res.status(400).json({message:"Gym with the provided username or email already exists and is verified."});
+            }
+
+            /*
+              Case 2: Account exists but email is NOT verified yet.
+              We do NOT create a new record. Instead we regenerate an OTP and ask the user to verify.
+            */
+            try{
+              await generateAndSendOtp(existingGym, 'Account Verification – Resent');
+            }catch(mailErr){
+              console.error('Failed to resend verification OTP', mailErr);
+            }
+
+            return res.status(200).json({message:"A verification OTP has been resent to your email. Please verify to complete registration.",success:true});
         }
+
+        // No existing account – proceed to create a new (unverified) record
+        const hashedPassword = await bcrypt.hash(password,10);
+        const newGym = new Gym({username,email,password:hashedPassword,gymName,profileImage});
+        await newGym.save();
+
+        // Send verification OTP
+        try{
+          await generateAndSendOtp(newGym);
+        }catch(mailErr){
+          console.error('Failed to send verification OTP', mailErr);
+        }
+
+        res.status(201).json({message:"Registered successfully. Please verify your email with the OTP sent.",success:true});
     }catch(err){
         res.status(500).json({message:err.message});
     }
@@ -32,6 +81,9 @@ const cookieOptions = {
   sameSite: isProd ? 'lax' : 'strict', // strict is fine on localhost
   maxAge: 3600000,
 };
+// Prepare options for clearing the auth cookie without the deprecated `maxAge` field
+const clearCookieOptions = { ...cookieOptions };
+delete clearCookieOptions.maxAge;
 export const loginGym = async (req,res) => {
     try{
         const {email,password} = req.body;
@@ -43,6 +95,9 @@ export const loginGym = async (req,res) => {
         const isPasswordValid = await bcrypt.compare(password, gym.password);
         
         if(isPasswordValid){
+            if(!gym.isEmailVerified){
+              return res.status(403).json({message:"Please verify your email with the OTP sent before logging in."});
+            }
             const token = jwt.sign({id:gym._id},process.env.JWT_SECRET,{expiresIn:"1h"});
             res.cookie("token",token,cookieOptions);
             res.status(200).json({message:"Gym logged in successfully",gym,success:true,token});
@@ -113,7 +168,11 @@ export const verifyOtp = async (req,res) => {
             resetPasswordExpiresOtp:{$gt:Date.now()}
         });
         if(gym){
-            res.status(200).json({message:"OTP verified successfully"});
+            gym.isEmailVerified = true;
+            gym.resetPasswordTokenOtp = null;
+            gym.resetPasswordExpiresOtp = null;
+            await gym.save();
+            res.status(200).json({message:"OTP verified successfully",success:true});
         }else{
             res.status(400).json({message:"Invalid OTP"});
         }
@@ -144,6 +203,6 @@ export const resetPassword = async (req,res) => {
 }
 
 export const logoutGym = async (req,res) => {
-    res.clearCookie("token",cookieOptions);
+    res.clearCookie("token", clearCookieOptions);
     res.status(200).json({message:"Gym logged out successfully"});
 }

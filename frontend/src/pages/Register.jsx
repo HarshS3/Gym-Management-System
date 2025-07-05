@@ -126,8 +126,8 @@ const Register = () => {
       const response = await axios.post(`${config.apiUrl}/auth/register`, registerFields);
       if(response.data.success){
         // console.log(response);
-        toast.success("Registration successful");
-        navigate("/login");
+        toast.success("Registration successful. Check your email for the OTP");
+        navigate("/verify-email", {state:{email: registerFields.email}});
       }
     }catch(error){
       console.error("Registration error:", error);
