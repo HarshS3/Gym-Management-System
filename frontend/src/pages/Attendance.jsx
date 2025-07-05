@@ -131,7 +131,12 @@ const Attendance = () => {
                 <FaceCapture capturing={capturing} onCapture={async (img) => {
                   setCapturing(true);
                   try {
-                    const response = await axios.post(`${config.faceApiUrl}/recognize-face`, {
+                    // Always use the proxy endpoint in production
+                    const apiEndpoint = process.env.NODE_ENV === 'production' 
+                      ? '/face-api/recognize-face'
+                      : `${config.faceApiUrl}/recognize-face`;
+                      
+                    const response = await axios.post(apiEndpoint, {
                       image: img, // base64 encoded image
                     }, {
                       headers: {

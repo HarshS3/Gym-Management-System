@@ -11,6 +11,18 @@ venv/
 # Environment files
 .env
 .env.*
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Project-specific env files
+/backend/.env
+/backend/.env.*
+/frontend/.env
+/frontend/.env.*
+/python/.env
+/python/.env.*
 
 # Logs
 npm-debug.log*
@@ -23,3 +35,9 @@ yarn-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Ignore dotenv files everywhere (root and sub-folders)
+.env
+.env.*
+**/.env
+**/.env.*

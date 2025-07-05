@@ -22,26 +22,38 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Increase timeout so large face-recognition requests don't cause 504s
+const PROXY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
 // Proxy for Python Face API – must be registered BEFORE body parsers so the
 // raw request stream reaches the proxy intact (otherwise express.json would
 // consume it and the proxied request body would be empty).
+app.get('/face-api/test', (req, res) => {
+  res.send('Proxy route is active');
+});
+
 app.use(
   '/face-api',
   createProxyMiddleware({
-    target: process.env.FACE_API_URL || 'http://127.0.0.1:5001',
+    target: 'http://localhost:5001',
     changeOrigin: true,
-    pathRewrite: { '^/face-api': '' },
+    pathRewrite: {
+      '^/face-api': '', // ✅ crucial line
+    },
     timeout: 5 * 60 * 1000,
     proxyTimeout: 5 * 60 * 1000,
+    limit: '10mb',
     onError: (err, req, res) => {
-      console.error('Face API proxy error:', err.message);
-      res.status(500).json({ success: false, message: 'Face API service unavailable' });
+      console.error('❌ Face API proxy error:', err.message);
+      res.status(500).json({
+        success: false,
+        message: 'Face recognition service error: ' + err.message,
+      });
     },
   })
 );
-
-// JSON parser & cookies for other API routes
-app.use(express.json({ limit: '5mb' }));
+// Increase body parser limit for other routes
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 app.use(cors({
@@ -68,6 +80,8 @@ app.use(express.static(path.join(__dirname, '../frontend/build')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
 });
+console.log('FACE_API_URL at runtime:', process.env.FACE_API_URL);
+console.log('Proxy target:', process.env.FACE_API_URL);
 
 connectDB()
   .then(() => {
