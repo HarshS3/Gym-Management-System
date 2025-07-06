@@ -135,7 +135,7 @@ const Attendance = () => {
                     const apiEndpoint = process.env.NODE_ENV === 'production' 
                       ? '/face-api/recognize-face'
                       : `${config.faceApiUrl}/recognize-face`;
-                      
+                     console.log(apiEndpoint); 
                     const response = await axios.post(apiEndpoint, {
                       image: img, // base64 encoded image
                     }, {

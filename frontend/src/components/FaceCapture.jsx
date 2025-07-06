@@ -1,6 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
 import * as faceapi from 'face-api.js';
+import { config } from '../config/config';
+
+// Debug logging
+const logApiRequest = (url, method = 'GET') => {
+  console.log('Face API Request:', {
+    url,
+    method,
+    environment: process.env.NODE_ENV,
+    baseUrl: config.faceApiUrl
+  });
+};
 
 const videoConstraints = {
   width: 480,

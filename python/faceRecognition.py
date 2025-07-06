@@ -26,6 +26,20 @@ app = Flask(__name__)
 allowed_origins = ['http://localhost:3000', 'http://localhost:5000']
 CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
 
+# Add request logging
+@app.before_request
+def log_request_info():
+    logger.debug('Request Headers: %s', dict(request.headers))
+    logger.debug('Request URL: %s %s', request.method, request.url)
+    logger.debug('Request Origin: %s', request.headers.get('Origin'))
+    logger.debug('Request Host: %s', request.headers.get('Host'))
+
+@app.after_request
+def after_request(response):
+    logger.debug('Response Status: %s', response.status)
+    logger.debug('Response Headers: %s', dict(response.headers))
+    return response
+
 # Increase Flask's maximum content length to 10MB
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
 
@@ -146,6 +160,16 @@ def refresh_faces():
         return jsonify({'success': True, 'count': len(known_face_names)})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/test', methods=['GET'])
+def test():
+    logger.info('Test endpoint hit')
+    return jsonify({
+        'status': 'ok',
+        'message': 'Face Recognition API is running',
+        'time': datetime.utcnow().isoformat(),
+        'allowed_origins': allowed_origins
+    })
 
 if __name__ == '__main__':
     import os

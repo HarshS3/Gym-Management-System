@@ -7,3 +7,4 @@ python-dotenv
 requests
 cloudinary
 gunicorn
+dlib_bin-19.24.6-cp38-cp38-win_amd64.whl
