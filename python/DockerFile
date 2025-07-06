@@ -1,5 +1,5 @@
-# Use a full Debian-based Python image (not slim) for compiling dlib
-FROM python:3.8.10-slim
+# Use full base image (not slim) for dlib compatibility
+FROM python:3.8.10
 
 # Install OS dependencies
 RUN apt-get update && apt-get install -y \
@@ -15,15 +15,15 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy all files
+# Copy code
 COPY . .
 
 # Install Python packages
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Expose the port Flask will run on
+# Expose the port
 EXPOSE 8000
 
-# Start the app with gunicorn
+# Start with Gunicorn (change faceRecognition if needed)
 CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8000", "faceRecognition:app"]
