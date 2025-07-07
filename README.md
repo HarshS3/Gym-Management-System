@@ -1,8 +1,7 @@
 # 🏋️ Gym Management System
 
-[🌐 Live Demo](https://gym-management-system-8qm8.onrender.com/)  
-🎓 Built during my summer break to help small gyms run like premium franchises—100% hosted on free-tier cloud infrastructure.
-
+# [🌐 Live Demo](https://gym-management-system-8qm8.onrender.com/)  
+🎓 Started as a learning project during my summer break and evolved into a full-fledged production-ready system—hosted entirely on free-tier cloud services.
 
 ## 📌 Overview
 
@@ -12,39 +11,46 @@ A full-stack Gym Management System featuring face recognition attendance, digita
 
 ## ✨ Features
 
+### 🔒 Authentication & Security
+- JWT-based authentication for protected routes
+- Secure login system for admin/staff
+- HTTP-only cookies for session management
+- Password hashing using bcrypt
+
 ### 👥 Member Management
-- 🔍 Face recognition-based attendance
-- 📆 Auto membership status updates
-- 🆔 Digital ID card generation with PDF export
-- 📈 Member progress tracking
-- 📂 Bulk member import/export
+- Face recognition-based attendance
+- Auto membership status updates
+- Digital ID card generation with PDF export
+- Member progress tracking
+- Bulk member import/export
 
 ### 💳 Billing & Payments
-- 💰 Razorpay payment gateway integration
-- ⏰ Auto-renewal email reminders
-- 🧾 Invoice generation & payment history
-- 📊 Flexible pricing & membership plans
+- Razorpay payment gateway integration
+- Auto-renewal email reminders
+- Invoice generation & payment history
+- Flexible pricing & membership plans
+- Revenue analytics and entries
 
 ### 📊 Analytics Dashboard
-- 💹 Revenue trends & charts (Chart.js)
-- 👥 Member distribution insights
-- 📆 Attendance heatmaps
-- 🔁 Member churn prediction
-- 📤 Exportable reports
+- Revenue trends & charts (Chart.js)
+- Member distribution insights
+- Attendance heatmaps
+- Member churn prediction
+- Exportable reports
+- New registrations this month
+- Expiring members list
 
 ### 🤖 Automation
-- 🔄 Daily cron job for membership validation
-- 📧 Automated email reminders:
+- Daily cron job for membership validation
+- Automated email reminders:
   - Payment due
   - Expiry notice
-  - Announcements
-- 📝 Attendance log maintenance
+- Member details mail on registration
+- Invoice mailing on payment
 
 ### 🛠️ Equipment Tracker
-- 📦 Inventory & maintenance tracking
-- 🛠️ Maintenance scheduling alerts
-- 📉 Usage analytics
-- 📱 QR-code based equipment access (beta)
+- Inventory & maintenance tracking
+- Maintenance scheduling alerts
 
 ---
 
@@ -68,3 +74,68 @@ A full-stack Gym Management System featuring face recognition attendance, digita
 ```bash
 git clone https://github.com/your-username/gym-management-system.git
 cd gym-management-system
+```
+### 🔐 Environment Variables
+#### .env (Root)
+```bash
+# MongoDB
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database-name>?retryWrites=true&w=majority&appName=<app-name>
+
+# Email (for nodemailer)
+EMAIL_USER=your_email@example.com
+EMAIL_PASS=your_email_app_password
+
+# JWT Secret
+JWT_SECRET=your_jwt_secret
+
+# API URLs
+REACT_APP_API_BASE_URI=http://localhost:5000
+FACE_API_URL=http://localhost:5001
+
+# Server
+PORT=5000
+NODE_ENV=production
+
+# Razorpay
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+
+# AI Keys (optional)
+GEMINI_API_KEY=your_gemini_api_key
+COHERE_API_KEY=your_cohere_api_key
+
+# Cloudinary
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+```
+#### .env (Python)
+```bash
+CLOUDINARY_CLOUD_NAME=your_cloud
+CLOUDINARY_API_KEY=your_key
+CLOUDINARY_API_SECRET=your_secret
+```
+
+
+
+### 🚀 Backend Setup
+```bash
+cd backend
+npm install
+```
+### 🖼️ Frontend Setup
+```bash
+npm run build
+```
+### 🧠 Python Face Recognition Server
+```bash
+cd python
+python -m venv venv
+source venv/bin/activate 
+pip install -r requirements.txt
+python faceRecognition.py
+```
+
+## ⭐ If you found this project useful, please star the repository!
+
+
